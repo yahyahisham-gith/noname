@@ -60,7 +60,7 @@ local function ToggleFly(button)
     end
 end
 
--- ESP Logic (Boxes & Names)
+-- ESP Logic (Highlights)
 local function ToggleESP(button)
     _G.ESP = not _G.ESP
     button.Text = _G.ESP and "ESP: ON" or "ESP: OFF"
@@ -70,22 +70,19 @@ local function ToggleESP(button)
         task.spawn(function()
             while _G.ESP and not _G.HubStop do
                 for _, p in pairs(game.Players:GetPlayers()) do
-                    if p ~= Player and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
-                        if not p.Character.HumanoidRootPart:FindFirstChild("ESPHighlight") then
-                            local Highlight = Instance.new("Highlight", p.Character.HumanoidRootPart)
+                    if p ~= Player and p.Character then
+                        if not p.Character:FindFirstChild("ESPHighlight") then
+                            local Highlight = Instance.new("Highlight", p.Character)
                             Highlight.Name = "ESPHighlight"
-                            Highlight.Adornee = p.Character
                             Highlight.FillColor = Color3.fromRGB(255, 0, 0)
-                            Highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
                         end
                     end
                 end
                 task.wait(1)
             end
-            -- Cleanup ESP
             for _, p in pairs(game.Players:GetPlayers()) do
-                if p.Character and p.Character:FindFirstChild("HumanoidRootPart") and p.Character.HumanoidRootPart:FindFirstChild("ESPHighlight") then
-                    p.Character.HumanoidRootPart.ESPHighlight:Destroy()
+                if p.Character and p.Character:FindFirstChild("ESPHighlight") then
+                    p.Character.ESPHighlight:Destroy()
                 end
             end
         end)
@@ -106,7 +103,7 @@ if not ScreenGui.Parent then ScreenGui.Parent = Player.PlayerGui end
 ScreenGui.Name = "AdminHubV1"
 
 local Main = Instance.new("Frame", ScreenGui)
-Main.Size = UDim2.new(0, 220, 0, 320) -- Taller for more features
+Main.Size = UDim2.new(0, 220, 0, 320)
 Main.Position = UDim2.new(0.5, -110, 0.4, -160)
 Main.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
 Main.Active = true
@@ -133,32 +130,23 @@ local function CreateButton(text, pos, color, func)
     return btn
 end
 
--- [4] BUTTONS & FEATURES
+-- [4] BUTTONS
 CreateButton("Fly & Noclip: OFF", UDim2.new(0.05, 0, 0.15, 0), Color3.fromRGB(0, 120, 200), ToggleFly)
-
 CreateButton("Speed: 100", UDim2.new(0.05, 0, 0.28, 0), Color3.fromRGB(80, 80, 80), function()
     if Player.Character then Player.Character.Humanoid.WalkSpeed = 100 end
 end)
-
 CreateButton("Reset Speed (16)", UDim2.new(0.05, 0, 0.41, 0), Color3.fromRGB(40, 40, 40), function()
     if Player.Character then Player.Character.Humanoid.WalkSpeed = 16 end
 end)
-
 CreateButton("Jump Power: 100", UDim2.new(0.05, 0, 0.54, 0), Color3.fromRGB(80, 80, 80), function()
-    if Player.Character then 
-        Player.Character.Humanoid.UseJumpPower = true
-        Player.Character.Humanoid.JumpPower = 100 
-    end
+    if Player.Character then Player.Character.Humanoid.JumpPower = 100 end
 end)
-
-CreateButton("Infinite Jump: OFF", UDim2.new(0.05, 0, 0.67, 0), Color3.fromRGB(0, 120, 200), function(btn)
+CreateButton("Inf Jump: OFF", UDim2.new(0.05, 0, 0.67, 0), Color3.fromRGB(0, 120, 200), function(btn)
     _G.InfJump = not _G.InfJump
     btn.Text = _G.InfJump and "Inf Jump: ON" or "Inf Jump: OFF"
     btn.BackgroundColor3 = _G.InfJump and Color3.fromRGB(0, 200, 100) or Color3.fromRGB(0, 120, 200)
 end)
-
 CreateButton("ESP: OFF", UDim2.new(0.05, 0, 0.80, 0), Color3.fromRGB(0, 120, 200), ToggleESP)
-
 CreateButton("Close Hub", UDim2.new(0.05, 0, 0.93, 0), Color3.fromRGB(150, 0, 0), function()
     _G.HubStop = true
     _G.Flying = false
