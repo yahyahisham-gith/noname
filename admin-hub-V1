@@ -1,5 +1,5 @@
 -- admin-hub-V1
--- Universal Admin Hub (Camera-Relative Fly)
+-- Universal Admin Hub (Toggle Fly + Camera Relative)
 -- Compatibility: Xeno Executor
 
 -- [1] KILLSWITCH & CLEANUP
@@ -10,55 +10,60 @@ if _G.HubRunning then
 end
 _G.HubRunning = true
 _G.HubStop = false
+_G.Flying = false -- Track fly state
 
 local Player = game.Players.LocalPlayer
 local Camera = workspace.CurrentCamera
 local RunService = game:GetService("RunService")
 
--- [2] FLY LOGIC (Camera-Relative: Look up to go up)
-local function ExecuteFly()
+-- [2] TOGGLE FLY LOGIC
+local function ToggleFly(button)
+    _G.Flying = not _G.Flying
+    
     local Character = Player.Character
     if not Character then return end
     local Root = Character:WaitForChild("HumanoidRootPart")
     local Humanoid = Character:WaitForChild("Humanoid")
 
-    -- Remove existing forces to prevent glitches
-    for _, v in pairs(Root:GetChildren()) do
-        if v:IsA("BodyVelocity") or v:IsA("BodyGyro") then v:Destroy() end
-    end
+    if _G.Flying then
+        -- START FLYING
+        button.Text = "Fly: ON"
+        button.BackgroundColor3 = Color3.fromRGB(0, 200, 100)
+        
+        local BV = Instance.new("BodyVelocity", Root)
+        local BG = Instance.new("BodyGyro", Root)
+        BV.Name = "HubFlyBV"
+        BG.Name = "HubFlyBG"
+        
+        BV.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
+        BG.MaxTorque = Vector3.new(math.huge, math.huge, math.huge)
+        BG.P = 15000
+        
+        local FlySpeed = 60
 
-    local BV = Instance.new("BodyVelocity", Root)
-    local BG = Instance.new("BodyGyro", Root)
-    
-    BV.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
-    BV.Velocity = Vector3.new(0, 0, 0)
-    
-    BG.MaxTorque = Vector3.new(math.huge, math.huge, math.huge)
-    BG.P = 15000 -- Smoothness of rotation
-    
-    local FlySpeed = 60
-
-    task.spawn(function()
-        while not _G.HubStop and Character and Character.Parent do
-            local CameraCFrame = Camera.CFrame
-            BG.CFrame = CameraCFrame
-            
-            -- Direction calculation based on WASD
-            local MoveDirection = Humanoid.MoveDirection
-            
-            if MoveDirection.Magnitude > 0 then
-                -- This part makes it follow the Camera's LookVector
-                -- If you look up and press W, you go up.
-                BV.Velocity = CameraCFrame.LookVector * (MoveDirection.Magnitude * FlySpeed)
-            else
-                BV.Velocity = Vector3.new(0, 0, 0)
+        task.spawn(function()
+            while _G.Flying and not _G.HubStop and Character and Character.Parent do
+                BG.CFrame = Camera.CFrame
+                local MoveDirection = Humanoid.MoveDirection
+                
+                if MoveDirection.Magnitude > 0 then
+                    -- Camera Relative: Look up to go up
+                    BV.Velocity = Camera.CFrame.LookVector * (MoveDirection.Magnitude * FlySpeed)
+                else
+                    BV.Velocity = Vector3.new(0, 0, 0)
+                end
+                RunService.RenderStepped:Wait()
             end
-            
-            RunService.RenderStepped:Wait()
-        end
-        BV:Destroy()
-        BG:Destroy()
-    end)
+            -- Cleanup when toggle is off
+            BV:Destroy()
+            BG:Destroy()
+        end)
+    else
+        -- STOP FLYING
+        button.Text = "Fly: OFF"
+        button.BackgroundColor3 = Color3.fromRGB(0, 120, 200)
+        -- Forces will be destroyed by the loop check above
+    end
 end
 
 -- [3] UI CREATION
@@ -66,8 +71,8 @@ local ScreenGui = Instance.new("ScreenGui", game.CoreGui)
 ScreenGui.Name = "AdminHubV1"
 
 local Main = Instance.new("Frame", ScreenGui)
-Main.Size = UDim2.new(0, 200, 0, 220)
-Main.Position = UDim2.new(0.5, -100, 0.4, -110)
+Main.Size = UDim2.new(0, 200, 0, 150) -- Shorter since Time is removed
+Main.Position = UDim2.new(0.5, -100, 0.4, -75)
 Main.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
 Main.Active = true
 Main.Draggable = true
@@ -90,26 +95,20 @@ local function CreateButton(text, pos, color, func)
     btn.TextColor3 = Color3.fromRGB(255, 255, 255)
     btn.Font = Enum.Font.Gotham
     Instance.new("UICorner", btn)
-    btn.MouseButton1Click:Connect(func)
+    btn.MouseButton1Click:Connect(function() func(btn) end)
+    return btn
 end
 
 -- [4] BUTTONS
-CreateButton("Fly (Camera Rel)", UDim2.new(0.05, 0, 0.2, 0), Color3.fromRGB(0, 120, 200), ExecuteFly)
-
-CreateButton("Inf Time", UDim2.new(0.05, 0, 0.4, 0), Color3.fromRGB(0, 150, 80), function()
-    task.spawn(function()
-        while not _G.HubStop do
-            pcall(function() Player.leaderstats.Time.Value = 9e15 end)
-            task.wait(0.5)
-        end
-    end)
-end)
+CreateButton("Fly: OFF", UDim2.new(0.05, 0, 0.3, 0), Color3.fromRGB(0, 120, 200), ToggleFly)
 
 CreateButton("Speed 100", UDim2.new(0.05, 0, 0.6, 0), Color3.fromRGB(150, 100, 0), function()
     if Player.Character then Player.Character.Humanoid.WalkSpeed = 100 end
 end)
 
-CreateButton("Close Hub", UDim2.new(0.05, 0, 0.8, 0), Color3.fromRGB(150, 0, 0), function()
+-- The Kill Script also turns off flying before closing
+CreateButton("Close Hub", UDim2.new(0.05, 0, 0.85, 0), Color3.fromRGB(150, 0, 0), function()
     _G.HubStop = true
+    _G.Flying = false
     ScreenGui:Destroy()
 end)
