@@ -1,12 +1,10 @@
 -- admin-hub-V1
--- Universal Admin Hub (Toggle Fly + Noclip + Camera Relative)
+-- Universal Admin Hub (Fly, Noclip, Speed, ESP, Inf Jump)
 -- Compatibility: Xeno Executor
 
 -- [1] KILLSWITCH & CLEANUP
--- Stops any previous instances of the script to prevent lag or double-GUIs
 if _G.HubRunning then 
     _G.HubStop = true 
-    -- Search CoreGui and PlayerGui for old versions
     local oldGui = game.CoreGui:FindFirstChild("AdminHubV1") or game:GetService("Players").LocalPlayer.PlayerGui:FindFirstChild("AdminHubV1")
     if oldGui then oldGui:Destroy() end
     task.wait(0.3) 
@@ -15,88 +13,104 @@ end
 _G.HubRunning = true
 _G.HubStop = false
 _G.Flying = false 
+_G.InfJump = false
+_G.ESP = false
 
 local Player = game:GetService("Players").LocalPlayer
 local Camera = workspace.CurrentCamera
 local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
 
--- [2] TOGGLE FLY & NOCLIP LOGIC
+-- [2] UTILITY FUNCTIONS
+
+-- Fly & Noclip Logic
 local function ToggleFly(button)
     _G.Flying = not _G.Flying
-    
     local Character = Player.Character
     if not Character then return end
     local Root = Character:WaitForChild("HumanoidRootPart")
     local Humanoid = Character:WaitForChild("Humanoid")
 
     if _G.Flying then
-        -- START FLYING
         button.Text = "Fly: ON"
         button.BackgroundColor3 = Color3.fromRGB(0, 200, 100)
-        
-        -- Body Objects for Physics Manipulation
         local BV = Instance.new("BodyVelocity", Root)
         local BG = Instance.new("BodyGyro", Root)
         BV.Name = "HubFlyBV"
         BG.Name = "HubFlyBG"
-        
         BV.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
         BG.MaxTorque = Vector3.new(math.huge, math.huge, math.huge)
         BG.P = 15000
         
-        local FlySpeed = 60
-
-        -- Main Flight & Noclip Loop
         task.spawn(function()
             while _G.Flying and not _G.HubStop and Character and Character.Parent do
-                -- Rotation follows camera
                 BG.CFrame = Camera.CFrame
-                
-                -- Direction handling
                 local MoveDirection = Humanoid.MoveDirection
-                if MoveDirection.Magnitude > 0 then
-                    -- Camera Relative: Fly in direction of crosshair
-                    BV.Velocity = Camera.CFrame.LookVector * (MoveDirection.Magnitude * FlySpeed)
-                else
-                    BV.Velocity = Vector3.new(0, 0, 0)
-                end
-                
-                -- NOCLIP COMPONENT
-                -- Setting state to 11 (StrafingNoPhysics) allows passing through parts
-                Humanoid:ChangeState(11)
-                
+                BV.Velocity = (MoveDirection.Magnitude > 0) and (Camera.CFrame.LookVector * (MoveDirection.Magnitude * 60)) or Vector3.new(0,0,0)
+                Humanoid:ChangeState(11) -- Noclip
                 RunService.RenderStepped:Wait()
             end
-            
-            -- CLEANUP: Reset physics and remove forces when stopped
             if BV then BV:Destroy() end
             if BG then BG:Destroy() end
-            if Humanoid then Humanoid:ChangeState(8) end -- Return to 'FallingDown' to reset physics
+            if Humanoid then Humanoid:ChangeState(8) end
         end)
     else
-        -- STOP FLYING
         button.Text = "Fly: OFF"
         button.BackgroundColor3 = Color3.fromRGB(0, 120, 200)
     end
 end
 
--- [3] UI CREATION
--- Using CoreGui so it doesn't get deleted if the player resets or changes scenes
-local ScreenGui = Instance.new("ScreenGui")
-pcall(function()
-    ScreenGui.Parent = game:GetService("CoreGui")
-end)
-if not ScreenGui.Parent then ScreenGui.Parent = Player:WaitForChild("PlayerGui") end
+-- ESP Logic (Boxes & Names)
+local function ToggleESP(button)
+    _G.ESP = not _G.ESP
+    button.Text = _G.ESP and "ESP: ON" or "ESP: OFF"
+    button.BackgroundColor3 = _G.ESP and Color3.fromRGB(0, 200, 100) or Color3.fromRGB(0, 120, 200)
+    
+    if _G.ESP then
+        task.spawn(function()
+            while _G.ESP and not _G.HubStop do
+                for _, p in pairs(game.Players:GetPlayers()) do
+                    if p ~= Player and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
+                        if not p.Character.HumanoidRootPart:FindFirstChild("ESPHighlight") then
+                            local Highlight = Instance.new("Highlight", p.Character.HumanoidRootPart)
+                            Highlight.Name = "ESPHighlight"
+                            Highlight.Adornee = p.Character
+                            Highlight.FillColor = Color3.fromRGB(255, 0, 0)
+                            Highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
+                        end
+                    end
+                end
+                task.wait(1)
+            end
+            -- Cleanup ESP
+            for _, p in pairs(game.Players:GetPlayers()) do
+                if p.Character and p.Character:FindFirstChild("HumanoidRootPart") and p.Character.HumanoidRootPart:FindFirstChild("ESPHighlight") then
+                    p.Character.HumanoidRootPart.ESPHighlight:Destroy()
+                end
+            end
+        end)
+    end
+end
 
+-- Infinite Jump
+UserInputService.JumpRequest:Connect(function()
+    if _G.InfJump and not _G.HubStop then
+        Player.Character:FindFirstChildOfClass("Humanoid"):ChangeState("Jumping")
+    end
+end)
+
+-- [3] UI CREATION
+local ScreenGui = Instance.new("ScreenGui")
+pcall(function() ScreenGui.Parent = game:GetService("CoreGui") end)
+if not ScreenGui.Parent then ScreenGui.Parent = Player.PlayerGui end
 ScreenGui.Name = "AdminHubV1"
-ScreenGui.ResetOnSpawn = false
 
 local Main = Instance.new("Frame", ScreenGui)
-Main.Size = UDim2.new(0, 200, 0, 150)
-Main.Position = UDim2.new(0.5, -100, 0.4, -75)
-Main.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+Main.Size = UDim2.new(0, 220, 0, 320) -- Taller for more features
+Main.Position = UDim2.new(0.5, -110, 0.4, -160)
+Main.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
 Main.Active = true
-Main.Draggable = true -- Allows you to move the menu
+Main.Draggable = true
 Instance.new("UICorner", Main).CornerRadius = UDim.new(0, 10)
 
 local Title = Instance.new("TextLabel", Main)
@@ -105,9 +119,7 @@ Title.Text = "ADMIN HUB V1"
 Title.TextColor3 = Color3.fromRGB(255, 255, 255)
 Title.BackgroundTransparency = 1
 Title.Font = Enum.Font.GothamBold
-Title.TextSize = 14
 
--- Button Helper Function
 local function CreateButton(text, pos, color, func)
     local btn = Instance.new("TextButton", Main)
     btn.Size = UDim2.new(0.9, 0, 0, 35)
@@ -116,28 +128,41 @@ local function CreateButton(text, pos, color, func)
     btn.BackgroundColor3 = color
     btn.TextColor3 = Color3.fromRGB(255, 255, 255)
     btn.Font = Enum.Font.Gotham
-    btn.TextSize = 14
     Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 6)
-    
-    btn.MouseButton1Click:Connect(function() 
-        func(btn) 
-    end)
+    btn.MouseButton1Click:Connect(function() func(btn) end)
     return btn
 end
 
--- [4] BUTTONS
-CreateButton("Fly: OFF", UDim2.new(0.05, 0, 0.3, 0), Color3.fromRGB(0, 120, 200), ToggleFly)
+-- [4] BUTTONS & FEATURES
+CreateButton("Fly & Noclip: OFF", UDim2.new(0.05, 0, 0.15, 0), Color3.fromRGB(0, 120, 200), ToggleFly)
 
-CreateButton("Speed 100", UDim2.new(0.05, 0, 0.6, 0), Color3.fromRGB(150, 100, 0), function()
-    if Player.Character and Player.Character:FindFirstChild("Humanoid") then 
-        Player.Character.Humanoid.WalkSpeed = 100 
+CreateButton("Speed: 100", UDim2.new(0.05, 0, 0.28, 0), Color3.fromRGB(80, 80, 80), function()
+    if Player.Character then Player.Character.Humanoid.WalkSpeed = 100 end
+end)
+
+CreateButton("Reset Speed (16)", UDim2.new(0.05, 0, 0.41, 0), Color3.fromRGB(40, 40, 40), function()
+    if Player.Character then Player.Character.Humanoid.WalkSpeed = 16 end
+end)
+
+CreateButton("Jump Power: 100", UDim2.new(0.05, 0, 0.54, 0), Color3.fromRGB(80, 80, 80), function()
+    if Player.Character then 
+        Player.Character.Humanoid.UseJumpPower = true
+        Player.Character.Humanoid.JumpPower = 100 
     end
 end)
 
-CreateButton("Close Hub", UDim2.new(0.05, 0, 0.85, 0), Color3.fromRGB(150, 0, 0), function()
-    _G.HubStop = true
-    _G.Flying = false
-    ScreenGui:Destroy()
+CreateButton("Infinite Jump: OFF", UDim2.new(0.05, 0, 0.67, 0), Color3.fromRGB(0, 120, 200), function(btn)
+    _G.InfJump = not _G.InfJump
+    btn.Text = _G.InfJump and "Inf Jump: ON" or "Inf Jump: OFF"
+    btn.BackgroundColor3 = _G.InfJump and Color3.fromRGB(0, 200, 100) or Color3.fromRGB(0, 120, 200)
 end)
 
-print("Admin Hub V1 Loaded. Camera-relative Fly + Noclip Active.")
+CreateButton("ESP: OFF", UDim2.new(0.05, 0, 0.80, 0), Color3.fromRGB(0, 120, 200), ToggleESP)
+
+CreateButton("Close Hub", UDim2.new(0.05, 0, 0.93, 0), Color3.fromRGB(150, 0, 0), function()
+    _G.HubStop = true
+    _G.Flying = false
+    _G.ESP = false
+    _G.InfJump = false
+    ScreenGui:Destroy()
+end)
