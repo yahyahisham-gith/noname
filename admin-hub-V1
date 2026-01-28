@@ -1,0 +1,104 @@
+-- admin-hub-V1
+-- Universal Admin Hub for Roblox
+-- Designed for Xeno Executor
+
+-- [1] PREVENT MULTIPLE EXECUTIONS
+if _G.HubRunning then 
+    _G.HubStop = true 
+    if game.CoreGui:FindFirstChild("AdminHubV1") then game.CoreGui.AdminHubV1:Destroy() end
+    task.wait(0.3) 
+end
+_G.HubRunning = true
+_G.HubStop = false
+
+local Player = game.Players.LocalPlayer
+local Character = Player.Character or Player.CharacterAdded:Wait()
+local RunService = game:GetService("RunService")
+
+-- [2] FLY LOGIC (UNDERSTANDABLE & SWAPPABLE)
+-- You can replace the code inside this function with any third-party fly script
+local function ExecuteFly()
+    -- CLEANUP: Remove common Fly GUIs from other scripts
+    for _, v in pairs(Player.PlayerGui:GetChildren()) do
+        if v.Name:lower():find("fly") or v.Name:lower():find("panel") then
+            v:Destroy()
+        end
+    end
+
+    -- SIMPLE UNDERSTANDABLE FLY CODE
+    local Speed = 50
+    local Root = Character:WaitForChild("HumanoidRootPart")
+    local Trowel = Instance.new("BodyVelocity", Root)
+    local Gyro = Instance.new("BodyGyro", Root)
+    
+    Trowel.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
+    Gyro.MaxTorque = Vector3.new(math.huge, math.huge, math.huge)
+    
+    task.spawn(function()
+        while not _G.HubStop do
+            local moveDir = Player.Character.Humanoid.MoveDirection
+            Trowel.Velocity = moveDir * Speed
+            Gyro.CFrame = workspace.CurrentCamera.CFrame
+            RunService.RenderStepped:Wait()
+            if not Character or not Character:Parent() then break end
+        end
+        Trowel:Destroy()
+        Gyro:Destroy()
+    end)
+end
+
+-- [3] UI CREATION
+local ScreenGui = Instance.new("ScreenGui", game.CoreGui)
+ScreenGui.Name = "AdminHubV1"
+
+local Main = Instance.new("Frame", ScreenGui)
+Main.Size = UDim2.new(0, 200, 0, 220)
+Main.Position = UDim2.new(0.5, -100, 0.4, -110)
+Main.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+Main.Active = true
+Main.Draggable = true
+Instance.new("UICorner", Main)
+
+local Title = Instance.new("TextLabel", Main)
+Title.Size = UDim2.new(1, 0, 0, 40)
+Title.Text = "ADMIN HUB V1"
+Title.TextColor3 = Color3.fromRGB(255, 255, 255)
+Title.BackgroundTransparency = 1
+Title.Font = Enum.Font.GothamBold
+
+-- CREATE BUTTON FUNCTION
+local function CreateButton(text, pos, color, func)
+    local btn = Instance.new("TextButton", Main)
+    btn.Size = UDim2.new(0.9, 0, 0, 35)
+    btn.Position = pos
+    btn.Text = text
+    btn.BackgroundColor3 = color
+    btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    btn.Font = Enum.Font.Gotham
+    Instance.new("UICorner", btn)
+    btn.MouseButton1Click:Connect(func)
+    return btn
+end
+
+-- [4] BUTTON ACTIONS
+CreateButton("Fly", UDim2.new(0.05, 0, 0.2, 0), Color3.fromRGB(0, 120, 200), function()
+    ExecuteFly()
+end)
+
+CreateButton("Infinite Time", UDim2.new(0.05, 0, 0.4, 0), Color3.fromRGB(0, 150, 80), function()
+    task.spawn(function()
+        while not _G.HubStop do
+            pcall(function() Player.leaderstats.Time.Value = 9e15 end)
+            task.wait(0.5)
+        end
+    end)
+end)
+
+CreateButton("Speed (100)", UDim2.new(0.05, 0, 0.6, 0), Color3.fromRGB(150, 100, 0), function()
+    Player.Character.Humanoid.WalkSpeed = 100
+end)
+
+CreateButton("Kill Script", UDim2.new(0.05, 0, 0.8, 0), Color3.fromRGB(150, 0, 0), function()
+    _G.HubStop = true
+    ScreenGui:Destroy()
+end)
