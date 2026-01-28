@@ -1,8 +1,8 @@
 -- admin-hub-V1
--- Universal Admin Hub for Roblox
--- Designed for Xeno Executor
+-- Universal Admin Hub (Camera-Relative Fly)
+-- Compatibility: Xeno Executor
 
--- [1] PREVENT MULTIPLE EXECUTIONS
+-- [1] KILLSWITCH & CLEANUP
 if _G.HubRunning then 
     _G.HubStop = true 
     if game.CoreGui:FindFirstChild("AdminHubV1") then game.CoreGui.AdminHubV1:Destroy() end
@@ -12,38 +12,52 @@ _G.HubRunning = true
 _G.HubStop = false
 
 local Player = game.Players.LocalPlayer
-local Character = Player.Character or Player.CharacterAdded:Wait()
+local Camera = workspace.CurrentCamera
 local RunService = game:GetService("RunService")
 
--- [2] FLY LOGIC (UNDERSTANDABLE & SWAPPABLE)
--- You can replace the code inside this function with any third-party fly script
+-- [2] FLY LOGIC (Camera-Relative: Look up to go up)
 local function ExecuteFly()
-    -- CLEANUP: Remove common Fly GUIs from other scripts
-    for _, v in pairs(Player.PlayerGui:GetChildren()) do
-        if v.Name:lower():find("fly") or v.Name:lower():find("panel") then
-            v:Destroy()
-        end
+    local Character = Player.Character
+    if not Character then return end
+    local Root = Character:WaitForChild("HumanoidRootPart")
+    local Humanoid = Character:WaitForChild("Humanoid")
+
+    -- Remove existing forces to prevent glitches
+    for _, v in pairs(Root:GetChildren()) do
+        if v:IsA("BodyVelocity") or v:IsA("BodyGyro") then v:Destroy() end
     end
 
-    -- SIMPLE UNDERSTANDABLE FLY CODE
-    local Speed = 50
-    local Root = Character:WaitForChild("HumanoidRootPart")
-    local Trowel = Instance.new("BodyVelocity", Root)
-    local Gyro = Instance.new("BodyGyro", Root)
+    local BV = Instance.new("BodyVelocity", Root)
+    local BG = Instance.new("BodyGyro", Root)
     
-    Trowel.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
-    Gyro.MaxTorque = Vector3.new(math.huge, math.huge, math.huge)
+    BV.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
+    BV.Velocity = Vector3.new(0, 0, 0)
     
+    BG.MaxTorque = Vector3.new(math.huge, math.huge, math.huge)
+    BG.P = 15000 -- Smoothness of rotation
+    
+    local FlySpeed = 60
+
     task.spawn(function()
-        while not _G.HubStop do
-            local moveDir = Player.Character.Humanoid.MoveDirection
-            Trowel.Velocity = moveDir * Speed
-            Gyro.CFrame = workspace.CurrentCamera.CFrame
+        while not _G.HubStop and Character and Character.Parent do
+            local CameraCFrame = Camera.CFrame
+            BG.CFrame = CameraCFrame
+            
+            -- Direction calculation based on WASD
+            local MoveDirection = Humanoid.MoveDirection
+            
+            if MoveDirection.Magnitude > 0 then
+                -- This part makes it follow the Camera's LookVector
+                -- If you look up and press W, you go up.
+                BV.Velocity = CameraCFrame.LookVector * (MoveDirection.Magnitude * FlySpeed)
+            else
+                BV.Velocity = Vector3.new(0, 0, 0)
+            end
+            
             RunService.RenderStepped:Wait()
-            if not Character or not Character:Parent() then break end
         end
-        Trowel:Destroy()
-        Gyro:Destroy()
+        BV:Destroy()
+        BG:Destroy()
     end)
 end
 
@@ -54,7 +68,7 @@ ScreenGui.Name = "AdminHubV1"
 local Main = Instance.new("Frame", ScreenGui)
 Main.Size = UDim2.new(0, 200, 0, 220)
 Main.Position = UDim2.new(0.5, -100, 0.4, -110)
-Main.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+Main.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
 Main.Active = true
 Main.Draggable = true
 Instance.new("UICorner", Main)
@@ -66,7 +80,7 @@ Title.TextColor3 = Color3.fromRGB(255, 255, 255)
 Title.BackgroundTransparency = 1
 Title.Font = Enum.Font.GothamBold
 
--- CREATE BUTTON FUNCTION
+-- Button Helper
 local function CreateButton(text, pos, color, func)
     local btn = Instance.new("TextButton", Main)
     btn.Size = UDim2.new(0.9, 0, 0, 35)
@@ -77,15 +91,12 @@ local function CreateButton(text, pos, color, func)
     btn.Font = Enum.Font.Gotham
     Instance.new("UICorner", btn)
     btn.MouseButton1Click:Connect(func)
-    return btn
 end
 
--- [4] BUTTON ACTIONS
-CreateButton("Fly", UDim2.new(0.05, 0, 0.2, 0), Color3.fromRGB(0, 120, 200), function()
-    ExecuteFly()
-end)
+-- [4] BUTTONS
+CreateButton("Fly (Camera Rel)", UDim2.new(0.05, 0, 0.2, 0), Color3.fromRGB(0, 120, 200), ExecuteFly)
 
-CreateButton("Infinite Time", UDim2.new(0.05, 0, 0.4, 0), Color3.fromRGB(0, 150, 80), function()
+CreateButton("Inf Time", UDim2.new(0.05, 0, 0.4, 0), Color3.fromRGB(0, 150, 80), function()
     task.spawn(function()
         while not _G.HubStop do
             pcall(function() Player.leaderstats.Time.Value = 9e15 end)
@@ -94,11 +105,11 @@ CreateButton("Infinite Time", UDim2.new(0.05, 0, 0.4, 0), Color3.fromRGB(0, 150,
     end)
 end)
 
-CreateButton("Speed (100)", UDim2.new(0.05, 0, 0.6, 0), Color3.fromRGB(150, 100, 0), function()
-    Player.Character.Humanoid.WalkSpeed = 100
+CreateButton("Speed 100", UDim2.new(0.05, 0, 0.6, 0), Color3.fromRGB(150, 100, 0), function()
+    if Player.Character then Player.Character.Humanoid.WalkSpeed = 100 end
 end)
 
-CreateButton("Kill Script", UDim2.new(0.05, 0, 0.8, 0), Color3.fromRGB(150, 0, 0), function()
+CreateButton("Close Hub", UDim2.new(0.05, 0, 0.8, 0), Color3.fromRGB(150, 0, 0), function()
     _G.HubStop = true
     ScreenGui:Destroy()
 end)
