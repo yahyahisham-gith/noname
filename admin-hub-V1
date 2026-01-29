@@ -1,5 +1,5 @@
 -- admin-hub-V1
--- Universal Admin Hub (Self-Contained Fly + Billboard Chat Bypass)
+-- Universal Admin Hub (Fly + Bubble Chat + Gamepass Spoofer)
 -- Compatibility: Xeno Executor
 
 -- [1] KILLSWITCH & CLEANUP
@@ -17,98 +17,36 @@ local Player = game:GetService("Players").LocalPlayer
 local Camera = workspace.CurrentCamera
 local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
+local MarketPlaceService = game:GetService("MarketplaceService")
 
--- [2] BILLBOARD CHAT LOGIC (Bypasses Text Chat Suspension)
-local function CreateChatBubble(text)
-    local Character = Player.Character
-    if not Character or not Character:FindFirstChild("Head") then return end
-    
-    -- Cleanup previous bubble
-    if Character.Head:FindFirstChild("BypassBubble") then 
-        Character.Head.BypassBubble:Destroy() 
-    end
-    
-    local Billboard = Instance.new("BillboardGui", Character.Head)
-    Billboard.Name = "BypassBubble"
-    Billboard.Size = UDim2.new(0, 200, 0, 50)
-    Billboard.ExtentsOffset = Vector3.new(0, 3, 0)
-    Billboard.AlwaysOnTop = true
-    
-    local Frame = Instance.new("Frame", Billboard)
-    Frame.Size = UDim2.new(1, 0, 1, 0)
-    Frame.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-    Instance.new("UICorner", Frame).CornerRadius = UDim.new(0, 8)
-    
-    local Label = Instance.new("TextLabel", Frame)
-    Label.Size = UDim2.new(1, 0, 1, 0)
-    Label.Text = text
-    Label.TextColor3 = Color3.fromRGB(0, 0, 0)
-    Label.BackgroundTransparency = 1
-    Label.TextScaled = true
-    Label.Font = Enum.Font.GothamBold
-    
-    -- Fade out and delete after 5 seconds
-    task.delay(5, function()
-        if Billboard then Billboard:Destroy() end
-    end)
-end
+-- [2] GAMEPASS SPOOFER LOGIC
+-- This hooks into the game's check system to return 'true' for your IDs
+local SpoofedIDs = {}
 
--- [3] SELF-CONTAINED FLY LOGIC
-local function ToggleFly(button)
-    _G.Flying = not _G.Flying
-    local Character = Player.Character
-    if not Character then return end
-    local Root = Character:WaitForChild("HumanoidRootPart")
-    local Humanoid = Character:WaitForChild("Humanoid")
-
-    if _G.Flying then
-        button.Text = "FLY: ON"
-        button.BackgroundColor3 = Color3.fromRGB(0, 200, 100)
-        
-        local BV = Instance.new("BodyVelocity", Root)
-        local BG = Instance.new("BodyGyro", Root)
-        BV.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
-        BG.MaxTorque = Vector3.new(math.huge, math.huge, math.huge)
-        BG.P = 15000
-        
-        task.spawn(function()
-            while _G.Flying and not _G.HubStop and Character and Character.Parent do
-                BG.CFrame = Camera.CFrame
-                local look = Camera.CFrame.LookVector
-                local right = Camera.CFrame.RightVector
-                local moveDir = Vector3.new(0,0,0)
-                
-                if UserInputService:IsKeyDown(Enum.KeyCode.W) then moveDir = moveDir + look end
-                if UserInputService:IsKeyDown(Enum.KeyCode.S) then moveDir = moveDir - look end
-                if UserInputService:IsKeyDown(Enum.KeyCode.A) then moveDir = moveDir - right end
-                if UserInputService:IsKeyDown(Enum.KeyCode.D) then moveDir = moveDir + right end
-                
-                BV.Velocity = (moveDir.Magnitude > 0) and (moveDir.Unit * 70) or Vector3.new(0,0,0)
-                
-                -- Aggressive Noclip loop
-                for _, part in pairs(Character:GetDescendants()) do
-                    if part:IsA("BasePart") then part.CanCollide = false end
-                end
-                RunService.Stepped:Wait()
+local oldUserOwnsGamePassAsync
+oldUserOwnsGamePassAsync = hookmetamethod(game, "__namecall", function(self, ...)
+    local method = getnamecallmethod()
+    local args = {...}
+    
+    if self == MarketPlaceService and method == "UserOwnsGamePassAsync" then
+        for _, id in pairs(SpoofedIDs) do
+            if args[2] == tonumber(id) then
+                return true
             end
-            if BV then BV:Destroy() end
-            if BG then BG:Destroy() end
-        end)
-    else
-        button.Text = "FLY: OFF"
-        button.BackgroundColor3 = Color3.fromRGB(0, 120, 200)
+        end
     end
-end
+    return oldUserOwnsGamePassAsync(self, ...)
+end)
 
--- [4] UI CONSTRUCTION
+-- [3] UI CONSTRUCTION
 local ScreenGui = Instance.new("ScreenGui")
 pcall(function() ScreenGui.Parent = game:GetService("CoreGui") end)
 if not ScreenGui.Parent then ScreenGui.Parent = Player.PlayerGui end
 ScreenGui.Name = "AdminHubV1"
 
 local Main = Instance.new("Frame", ScreenGui)
-Main.Size = UDim2.new(0, 220, 0, 320)
-Main.Position = UDim2.new(0.5, -110, 0.4, -160)
+Main.Size = UDim2.new(0, 220, 0, 420) -- Taller to fit Gamepass section
+Main.Position = UDim2.new(0.5, -110, 0.4, -210)
 Main.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
 Main.Active = true
 Main.Draggable = true
@@ -116,67 +54,108 @@ Instance.new("UICorner", Main).CornerRadius = UDim.new(0, 10)
 
 local Title = Instance.new("TextLabel", Main)
 Title.Size = UDim2.new(1, 0, 0, 40)
-Title.Text = "ADMIN HUB V1 (CHAT BUBBLE)"
+Title.Text = "ADMIN HUB V1"
 Title.TextColor3 = Color3.fromRGB(255, 255, 255)
 Title.BackgroundTransparency = 1
 Title.Font = Enum.Font.GothamBold
 
--- Chat Input Elements
+-- --- GAMEPASS SECTION ---
+local GPInput = Instance.new("TextBox", Main)
+GPInput.Size = UDim2.new(0.9, 0, 0, 35)
+GPInput.Position = UDim2.new(0.05, 0, 0.12, 0)
+GPInput.PlaceholderText = "Enter Gamepass ID..."
+GPInput.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+GPInput.TextColor3 = Color3.fromRGB(255, 255, 255)
+Instance.new("UICorner", GPInput)
+
+local GPSpoofBtn = Instance.new("TextButton", Main)
+GPSpoofBtn.Size = UDim2.new(0.9, 0, 0, 35)
+GPSpoofBtn.Position = UDim2.new(0.05, 0, 0.22, 0)
+GPSpoofBtn.Text = "SPOOF GAMEPASS"
+GPSpoofBtn.BackgroundColor3 = Color3.fromRGB(0, 150, 100)
+GPSpoofBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+Instance.new("UICorner", GPSpoofBtn)
+
+GPSpoofBtn.MouseButton1Click:Connect(function()
+    if GPInput.Text ~= "" then
+        table.insert(SpoofedIDs, GPInput.Text)
+        print("Now spoofing ID: " .. GPInput.Text)
+        GPInput.Text = "Success!"
+        task.wait(1)
+        GPInput.Text = ""
+    end
+end)
+
+-- --- CHAT SECTION (For your 1-day suspension) ---
 local ChatInput = Instance.new("TextBox", Main)
-ChatInput.Size = UDim2.new(0.9, 0, 0, 40)
-ChatInput.Position = UDim2.new(0.05, 0, 0.15, 0)
-ChatInput.PlaceholderText = "Type to bypass mute..."
-ChatInput.Text = ""
+ChatInput.Size = UDim2.new(0.9, 0, 0, 35)
+ChatInput.Position = UDim2.new(0.05, 0, 0.35, 0)
+ChatInput.PlaceholderText = "Mute Bypass Chat..."
 ChatInput.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
 ChatInput.TextColor3 = Color3.fromRGB(255, 255, 255)
 Instance.new("UICorner", ChatInput)
 
 local SendBtn = Instance.new("TextButton", Main)
-SendBtn.Size = UDim2.new(0.9, 0, 0, 40)
-SendBtn.Position = UDim2.new(0.05, 0, 0.3, 0)
+SendBtn.Size = UDim2.new(0.9, 0, 0, 35)
+SendBtn.Position = UDim2.new(0.05, 0, 0.45, 0)
 SendBtn.Text = "CREATE BUBBLE"
 SendBtn.BackgroundColor3 = Color3.fromRGB(120, 0, 200)
-SendBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 Instance.new("UICorner", SendBtn)
 SendBtn.MouseButton1Click:Connect(function()
+    -- Logic to create bubble (re-added internally for self-containment)
     if ChatInput.Text ~= "" then
-        CreateChatBubble(ChatInput.Text)
+        local head = Player.Character.Head
+        local bill = Instance.new("BillboardGui", head)
+        bill.Size = UDim2.new(0, 200, 0, 50)
+        bill.ExtentsOffset = Vector3.new(0, 3, 0)
+        local f = Instance.new("Frame", bill); f.Size = UDim2.new(1,0,1,0); f.BackgroundColor3 = Color3.new(1,1,1)
+        local l = Instance.new("TextLabel", f); l.Size = UDim2.new(1,0,1,0); l.Text = ChatInput.Text; l.TextScaled = true
+        task.delay(5, function() bill:Destroy() end)
         ChatInput.Text = ""
     end
 end)
 
--- Fly Button
+-- --- FLY SECTION ---
 local FlyBtn = Instance.new("TextButton", Main)
 FlyBtn.Size = UDim2.new(0.9, 0, 0, 40)
-FlyBtn.Position = UDim2.new(0.05, 0, 0.5, 0)
+FlyBtn.Position = UDim2.new(0.05, 0, 0.6, 0)
 FlyBtn.Text = "FLY: OFF"
 FlyBtn.BackgroundColor3 = Color3.fromRGB(0, 120, 200)
-FlyBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 Instance.new("UICorner", FlyBtn)
-FlyBtn.MouseButton1Click:Connect(function() ToggleFly(FlyBtn) end)
 
--- Speed Button
-local SpeedBtn = Instance.new("TextButton", Main)
-SpeedBtn.Size = UDim2.new(0.9, 0, 0, 40)
-SpeedBtn.Position = UDim2.new(0.05, 0, 0.65, 0)
-SpeedBtn.Text = "SPEED: 100"
-SpeedBtn.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
-SpeedBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-Instance.new("UICorner", SpeedBtn)
-SpeedBtn.MouseButton1Click:Connect(function()
-    if Player.Character then Player.Character.Humanoid.WalkSpeed = 100 end
+FlyBtn.MouseButton1Click:Connect(function()
+    _G.Flying = not _G.Flying
+    FlyBtn.Text = _G.Flying and "FLY: ON" or "FLY: OFF"
+    FlyBtn.BackgroundColor3 = _G.Flying and Color3.fromRGB(0, 200, 100) or Color3.fromRGB(0, 120, 200)
+    
+    if _G.Flying then
+        local Root = Player.Character.HumanoidRootPart
+        local BV = Instance.new("BodyVelocity", Root)
+        local BG = Instance.new("BodyGyro", Root)
+        BV.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
+        BG.MaxTorque = Vector3.new(math.huge, math.huge, math.huge)
+        
+        task.spawn(function()
+            while _G.Flying and not _G.HubStop do
+                BG.CFrame = Camera.CFrame
+                local look, right, moveDir = Camera.CFrame.LookVector, Camera.CFrame.RightVector, Vector3.new(0,0,0)
+                if UserInputService:IsKeyDown(Enum.KeyCode.W) then moveDir = moveDir + look end
+                if UserInputService:IsKeyDown(Enum.KeyCode.S) then moveDir = moveDir - look end
+                if UserInputService:IsKeyDown(Enum.KeyCode.A) then moveDir = moveDir - right end
+                if UserInputService:IsKeyDown(Enum.KeyCode.D) then moveDir = moveDir + right end
+                BV.Velocity = (moveDir.Magnitude > 0) and (moveDir.Unit * 70) or Vector3.new(0,0,0)
+                RunService.Stepped:Wait()
+            end
+            BV:Destroy() BG:Destroy()
+        end)
+    end
 end)
 
--- Close Button
+-- CLOSE HUB
 local CloseBtn = Instance.new("TextButton", Main)
 CloseBtn.Size = UDim2.new(0.9, 0, 0, 30)
-CloseBtn.Position = UDim2.new(0.05, 0, 0.88, 0)
+CloseBtn.Position = UDim2.new(0.05, 0, 0.9, 0)
 CloseBtn.Text = "Close Hub"
 CloseBtn.BackgroundColor3 = Color3.fromRGB(150, 0, 0)
-CloseBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 Instance.new("UICorner", CloseBtn)
-CloseBtn.MouseButton1Click:Connect(function() 
-    _G.HubStop = true
-    _G.Flying = false
-    ScreenGui:Destroy() 
-end)
+CloseBtn.MouseButton1Click:Connect(function() _G.HubStop = true; _G.Flying = false; ScreenGui:Destroy() end)
