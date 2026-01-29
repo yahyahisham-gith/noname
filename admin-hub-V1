@@ -20,7 +20,6 @@ local RunService = game:GetService("RunService")
 local MarketPlaceService = game:GetService("MarketplaceService")
 
 -- [2] GAMEPASS SPOOFER LOGIC
--- This hooks into the game's check system to return 'true' for your IDs
 local SpoofedIDs = {}
 
 local oldUserOwnsGamePassAsync
@@ -45,7 +44,7 @@ if not ScreenGui.Parent then ScreenGui.Parent = Player.PlayerGui end
 ScreenGui.Name = "AdminHubV1"
 
 local Main = Instance.new("Frame", ScreenGui)
-Main.Size = UDim2.new(0, 220, 0, 420) -- Taller to fit Gamepass section
+Main.Size = UDim2.new(0, 220, 0, 420) -- Taller to fit the new sections
 Main.Position = UDim2.new(0.5, -110, 0.4, -210)
 Main.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
 Main.Active = true
@@ -60,9 +59,17 @@ Title.BackgroundTransparency = 1
 Title.Font = Enum.Font.GothamBold
 
 -- --- GAMEPASS SECTION ---
+local GPLabel = Instance.new("TextLabel", Main)
+GPLabel.Size = UDim2.new(0.9, 0, 0, 20)
+GPLabel.Position = UDim2.new(0.05, 0, 0.1, 0)
+GPLabel.Text = "GAMEPASS SPOOFER"
+GPLabel.TextColor3 = Color3.fromRGB(150, 150, 150)
+GPLabel.BackgroundTransparency = 1
+GPLabel.Font = Enum.Font.Gotham
+
 local GPInput = Instance.new("TextBox", Main)
 GPInput.Size = UDim2.new(0.9, 0, 0, 35)
-GPInput.Position = UDim2.new(0.05, 0, 0.12, 0)
+GPInput.Position = UDim2.new(0.05, 0, 0.16, 0)
 GPInput.PlaceholderText = "Enter Gamepass ID..."
 GPInput.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
 GPInput.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -70,8 +77,8 @@ Instance.new("UICorner", GPInput)
 
 local GPSpoofBtn = Instance.new("TextButton", Main)
 GPSpoofBtn.Size = UDim2.new(0.9, 0, 0, 35)
-GPSpoofBtn.Position = UDim2.new(0.05, 0, 0.22, 0)
-GPSpoofBtn.Text = "SPOOF GAMEPASS"
+GPSpoofBtn.Position = UDim2.new(0.05, 0, 0.26, 0)
+GPSpoofBtn.Text = "SPOOF ID"
 GPSpoofBtn.BackgroundColor3 = Color3.fromRGB(0, 150, 100)
 GPSpoofBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 Instance.new("UICorner", GPSpoofBtn)
@@ -79,17 +86,16 @@ Instance.new("UICorner", GPSpoofBtn)
 GPSpoofBtn.MouseButton1Click:Connect(function()
     if GPInput.Text ~= "" then
         table.insert(SpoofedIDs, GPInput.Text)
-        print("Now spoofing ID: " .. GPInput.Text)
-        GPInput.Text = "Success!"
+        GPInput.Text = "Spoofed!"
         task.wait(1)
         GPInput.Text = ""
     end
 end)
 
--- --- CHAT SECTION (For your 1-day suspension) ---
+-- --- CHAT SECTION ---
 local ChatInput = Instance.new("TextBox", Main)
 ChatInput.Size = UDim2.new(0.9, 0, 0, 35)
-ChatInput.Position = UDim2.new(0.05, 0, 0.35, 0)
+ChatInput.Position = UDim2.new(0.05, 0, 0.4, 0)
 ChatInput.PlaceholderText = "Mute Bypass Chat..."
 ChatInput.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
 ChatInput.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -97,30 +103,35 @@ Instance.new("UICorner", ChatInput)
 
 local SendBtn = Instance.new("TextButton", Main)
 SendBtn.Size = UDim2.new(0.9, 0, 0, 35)
-SendBtn.Position = UDim2.new(0.05, 0, 0.45, 0)
-SendBtn.Text = "CREATE BUBBLE"
+SendBtn.Position = UDim2.new(0.05, 0, 0.5, 0)
+SendBtn.Text = "SEND BUBBLE"
 SendBtn.BackgroundColor3 = Color3.fromRGB(120, 0, 200)
+SendBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 Instance.new("UICorner", SendBtn)
+
 SendBtn.MouseButton1Click:Connect(function()
-    -- Logic to create bubble (re-added internally for self-containment)
     if ChatInput.Text ~= "" then
-        local head = Player.Character.Head
-        local bill = Instance.new("BillboardGui", head)
-        bill.Size = UDim2.new(0, 200, 0, 50)
-        bill.ExtentsOffset = Vector3.new(0, 3, 0)
-        local f = Instance.new("Frame", bill); f.Size = UDim2.new(1,0,1,0); f.BackgroundColor3 = Color3.new(1,1,1)
-        local l = Instance.new("TextLabel", f); l.Size = UDim2.new(1,0,1,0); l.Text = ChatInput.Text; l.TextScaled = true
-        task.delay(5, function() bill:Destroy() end)
-        ChatInput.Text = ""
+        local head = Player.Character and Player.Character:FindFirstChild("Head")
+        if head then
+            local bill = Instance.new("BillboardGui", head)
+            bill.Size = UDim2.new(0, 200, 0, 50)
+            bill.ExtentsOffset = Vector3.new(0, 3, 0)
+            local f = Instance.new("Frame", bill); f.Size = UDim2.new(1,0,1,0); f.BackgroundColor3 = Color3.new(1,1,1)
+            Instance.new("UICorner", f)
+            local l = Instance.new("TextLabel", f); l.Size = UDim2.new(1,0,1,0); l.Text = ChatInput.Text; l.TextScaled = true; l.BackgroundTransparency = 1
+            task.delay(5, function() bill:Destroy() end)
+            ChatInput.Text = ""
+        end
     end
 end)
 
 -- --- FLY SECTION ---
 local FlyBtn = Instance.new("TextButton", Main)
 FlyBtn.Size = UDim2.new(0.9, 0, 0, 40)
-FlyBtn.Position = UDim2.new(0.05, 0, 0.6, 0)
+FlyBtn.Position = UDim2.new(0.05, 0, 0.65, 0)
 FlyBtn.Text = "FLY: OFF"
 FlyBtn.BackgroundColor3 = Color3.fromRGB(0, 120, 200)
+FlyBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 Instance.new("UICorner", FlyBtn)
 
 FlyBtn.MouseButton1Click:Connect(function()
@@ -129,13 +140,13 @@ FlyBtn.MouseButton1Click:Connect(function()
     FlyBtn.BackgroundColor3 = _G.Flying and Color3.fromRGB(0, 200, 100) or Color3.fromRGB(0, 120, 200)
     
     if _G.Flying then
-        local Root = Player.Character.HumanoidRootPart
-        local BV = Instance.new("BodyVelocity", Root)
-        local BG = Instance.new("BodyGyro", Root)
-        BV.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
-        BG.MaxTorque = Vector3.new(math.huge, math.huge, math.huge)
-        
         task.spawn(function()
+            local Root = Player.Character:WaitForChild("HumanoidRootPart")
+            local BV = Instance.new("BodyVelocity", Root)
+            local BG = Instance.new("BodyGyro", Root)
+            BV.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
+            BG.MaxTorque = Vector3.new(math.huge, math.huge, math.huge)
+            
             while _G.Flying and not _G.HubStop do
                 BG.CFrame = Camera.CFrame
                 local look, right, moveDir = Camera.CFrame.LookVector, Camera.CFrame.RightVector, Vector3.new(0,0,0)
@@ -151,11 +162,26 @@ FlyBtn.MouseButton1Click:Connect(function()
     end
 end)
 
--- CLOSE HUB
+-- --- SPEED SECTION ---
+local SpeedBtn = Instance.new("TextButton", Main)
+SpeedBtn.Size = UDim2.new(0.9, 0, 0, 35)
+SpeedBtn.Position = UDim2.new(0.05, 0, 0.78, 0)
+SpeedBtn.Text = "SPEED: 100"
+SpeedBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+SpeedBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+Instance.new("UICorner", SpeedBtn)
+SpeedBtn.MouseButton1Click:Connect(function()
+    if Player.Character then Player.Character.Humanoid.WalkSpeed = 100 end
+end)
+
+-- CLOSE BUTTON
 local CloseBtn = Instance.new("TextButton", Main)
 CloseBtn.Size = UDim2.new(0.9, 0, 0, 30)
 CloseBtn.Position = UDim2.new(0.05, 0, 0.9, 0)
 CloseBtn.Text = "Close Hub"
 CloseBtn.BackgroundColor3 = Color3.fromRGB(150, 0, 0)
+CloseBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 Instance.new("UICorner", CloseBtn)
-CloseBtn.MouseButton1Click:Connect(function() _G.HubStop = true; _G.Flying = false; ScreenGui:Destroy() end)
+CloseBtn.MouseButton1Click:Connect(function() 
+    _G.HubStop = true; _G.Flying = false; ScreenGui:Destroy() 
+end)
