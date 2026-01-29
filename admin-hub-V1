@@ -1,6 +1,5 @@
 -- admin-hub-V1
--- Universal Admin Hub (Fly + Bubble Chat + Stable Spoofer)
--- Compatibility: Xeno Executor
+-- Universal Admin Hub (Stable Build)
 
 -- [1] CLEANUP
 if _G.HubRunning then 
@@ -11,7 +10,6 @@ if _G.HubRunning then
 end
 _G.HubRunning = true
 _G.HubStop = false
-_G.Flying = false
 
 local Player = game.Players.LocalPlayer
 local Camera = workspace.CurrentCamera
@@ -21,21 +19,19 @@ local MPS = game:GetService("MarketplaceService")
 
 -- [2] STABLE SPOOFER LOGIC
 local SpoofedIDs = {}
-local mt = getrawmetatable(game)
-local oldNamecall = mt.__namecall
-setreadonly(mt, false)
-
-mt.__namecall = newcclosure(function(self, ...)
-    local method = getnamecallmethod()
-    local args = {...}
-    if method == "UserOwnsGamePassAsync" and self == MPS then
-        for _, id in pairs(SpoofedIDs) do
-            if args[2] == tonumber(id) then return true end
-        end
+-- New method to avoid the "nil value" crash on Line 26
+local function CheckSpoof(id)
+    for _, v in pairs(SpoofedIDs) do
+        if tonumber(v) == tonumber(id) then return true end
     end
-    return oldNamecall(self, ...)
+    return false
+end
+
+-- Intercepting the ownership check safely
+local old; old = hookfunction(MPS.UserOwnsGamePassAsync, function(self, userId, id)
+    if CheckSpoof(id) then return true end
+    return old(self, userId, id)
 end)
-setreadonly(mt, true)
 
 -- [3] UI CONSTRUCTION
 local ScreenGui = Instance.new("ScreenGui")
@@ -44,21 +40,21 @@ if not ScreenGui.Parent then ScreenGui.Parent = Player.PlayerGui end
 ScreenGui.Name = "AdminHubV1"
 
 local Main = Instance.new("Frame", ScreenGui)
-Main.Size = UDim2.new(0, 220, 0, 400)
-Main.Position = UDim2.new(0.5, -110, 0.4, -200)
+Main.Size = UDim2.new(0, 220, 0, 420)
+Main.Position = UDim2.new(0.5, -110, 0.4, -210)
 Main.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
 Main.Active = true
 Main.Draggable = true
 Instance.new("UICorner", Main)
 
 local Title = Instance.new("TextLabel", Main)
-Title.Size = UDim2.new(1, 0, 0, 40); Title.Text = "ADMIN HUB V1"
-Title.TextColor3 = Color3.new(1,1,1); Title.BackgroundTransparency = 1; Title.Font = Enum.Font.GothamBold
+Title.Size = UDim2.new(1, 0, 0, 40); Title.Text = "ADMIN HUB V1"; Title.TextColor3 = Color3.new(1,1,1)
+Title.BackgroundTransparency = 1; Title.Font = Enum.Font.GothamBold
 
--- --- GAMEPASS SECTION ---
+-- --- NEW GAMEPASS SECTION ---
 local GPInput = Instance.new("TextBox", Main)
 GPInput.Size = UDim2.new(0.9, 0, 0, 35); GPInput.Position = UDim2.new(0.05, 0, 0.12, 0)
-GPInput.PlaceholderText = "Paste Gamepass ID..."; GPInput.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+GPInput.PlaceholderText = "Enter Gamepass ID..."; GPInput.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
 GPInput.TextColor3 = Color3.new(1,1,1); Instance.new("UICorner", GPInput)
 
 local GPSpoofBtn = Instance.new("TextButton", Main)
@@ -72,10 +68,10 @@ GPSpoofBtn.MouseButton1Click:Connect(function()
     end
 end)
 
--- --- CHAT SECTION ---
+-- --- BUBBLE CHAT SECTION ---
 local ChatInput = Instance.new("TextBox", Main)
 ChatInput.Size = UDim2.new(0.9, 0, 0, 35); ChatInput.Position = UDim2.new(0.05, 0, 0.35, 0)
-ChatInput.PlaceholderText = "Type Message..."; ChatInput.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+ChatInput.PlaceholderText = "Bubble Message..."; ChatInput.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
 ChatInput.TextColor3 = Color3.new(1,1,1); Instance.new("UICorner", ChatInput)
 
 local SendBtn = Instance.new("TextButton", Main)
@@ -107,11 +103,11 @@ FlyBtn.MouseButton1Click:Connect(function()
             local BG = Instance.new("BodyGyro", Root); BG.MaxTorque = Vector3.new(math.huge, math.huge, math.huge)
             while _G.Flying and not _G.HubStop do
                 BG.CFrame = Camera.CFrame
-                local look, right, moveDir = Camera.CFrame.LookVector, Camera.CFrame.RightVector, Vector3.new(0,0,0)
-                if UIS:IsKeyDown(Enum.KeyCode.W) then moveDir = moveDir + look end
-                if UIS:IsKeyDown(Enum.KeyCode.S) then moveDir = moveDir - look end
-                if UIS:IsKeyDown(Enum.KeyCode.A) then moveDir = moveDir - right end
-                if UIS:IsKeyDown(Enum.KeyCode.D) then moveDir = moveDir + right end
+                local moveDir = Vector3.new(0,0,0)
+                if UIS:IsKeyDown(Enum.KeyCode.W) then moveDir = moveDir + Camera.CFrame.LookVector end
+                if UIS:IsKeyDown(Enum.KeyCode.S) then moveDir = moveDir - Camera.CFrame.LookVector end
+                if UIS:IsKeyDown(Enum.KeyCode.A) then moveDir = moveDir - Camera.CFrame.RightVector end
+                if UIS:IsKeyDown(Enum.KeyCode.D) then moveDir = moveDir + Camera.CFrame.RightVector end
                 BV.Velocity = (moveDir.Magnitude > 0) and (moveDir.Unit * 70) or Vector3.new(0,0,0)
                 for _,v in pairs(Player.Character:GetDescendants()) do if v:IsA("BasePart") then v.CanCollide = false end end
                 RunService.Stepped:Wait()
