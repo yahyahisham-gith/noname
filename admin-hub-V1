@@ -1,5 +1,6 @@
 -- admin-hub-V1
--- Universal Admin Hub (Stable Build)
+-- Universal Admin Hub (Fly + Bubble Chat + Dual Gear Menus)
+-- Compatibility: Xeno Executor
 
 -- [1] CLEANUP
 if _G.HubRunning then 
@@ -12,26 +13,27 @@ _G.HubRunning = true
 _G.HubStop = false
 
 local Player = game.Players.LocalPlayer
-local Camera = workspace.CurrentCamera
 local UIS = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
-local MPS = game:GetService("MarketplaceService")
 
--- [2] STABLE SPOOFER LOGIC
-local SpoofedIDs = {}
--- New method to avoid the "nil value" crash on Line 26
-local function CheckSpoof(id)
-    for _, v in pairs(SpoofedIDs) do
-        if tonumber(v) == tonumber(id) then return true end
+-- [2] GEAR LOGIC
+local function GiveUniversalGear(id)
+    local gear = game:GetObjects("rbxassetid://" .. id)[1]
+    if gear then
+        gear.Parent = Player.Backpack
     end
-    return false
 end
 
--- Intercepting the ownership check safely
-local old; old = hookfunction(MPS.UserOwnsGamePassAsync, function(self, userId, id)
-    if CheckSpoof(id) then return true end
-    return old(self, userId, id)
-end)
+local function GiveInGameGear(name)
+    -- Searches common storage areas for the gear
+    local storage = game:GetService("ReplicatedStorage")
+    local gear = storage:FindFirstChild(name, true) or game:GetService("Lighting"):FindFirstChild(name, true)
+    if gear and gear:IsA("Tool") then
+        gear:Clone().Parent = Player.Backpack
+    else
+        print("Gear not found in game storage: " .. name)
+    end
+end
 
 -- [3] UI CONSTRUCTION
 local ScreenGui = Instance.new("ScreenGui")
@@ -39,45 +41,51 @@ pcall(function() ScreenGui.Parent = game:GetService("CoreGui") end)
 if not ScreenGui.Parent then ScreenGui.Parent = Player.PlayerGui end
 ScreenGui.Name = "AdminHubV1"
 
-local Main = Instance.new("Frame", ScreenGui)
-Main.Size = UDim2.new(0, 220, 0, 420)
-Main.Position = UDim2.new(0.5, -110, 0.4, -210)
-Main.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+local Main = Instance.new("ScrollingFrame", ScreenGui)
+Main.Size = UDim2.new(0, 240, 0, 450)
+Main.Position = UDim2.new(0.5, -120, 0.4, -225)
+Main.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+Main.CanvasSize = UDim2.new(0, 0, 1.5, 0)
 Main.Active = true
 Main.Draggable = true
 Instance.new("UICorner", Main)
+
+local UIList = Instance.new("UIListLayout", Main)
+UIList.Padding = UDim.new(0, 10)
+UIList.HorizontalAlignment = Enum.HorizontalAlignment.Center
 
 local Title = Instance.new("TextLabel", Main)
 Title.Size = UDim2.new(1, 0, 0, 40); Title.Text = "ADMIN HUB V1"; Title.TextColor3 = Color3.new(1,1,1)
 Title.BackgroundTransparency = 1; Title.Font = Enum.Font.GothamBold
 
--- --- NEW GAMEPASS SECTION ---
-local GPInput = Instance.new("TextBox", Main)
-GPInput.Size = UDim2.new(0.9, 0, 0, 35); GPInput.Position = UDim2.new(0.05, 0, 0.12, 0)
-GPInput.PlaceholderText = "Enter Gamepass ID..."; GPInput.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-GPInput.TextColor3 = Color3.new(1,1,1); Instance.new("UICorner", GPInput)
+-- --- UNIVERSAL GEAR (CATALOG ID) ---
+local UniGearInput = Instance.new("TextBox", Main)
+UniGearInput.Size = UDim2.new(0.9, 0, 0, 35); UniGearInput.PlaceholderText = "Catalog Gear ID..."; UniGearInput.BackgroundColor3 = Color3.fromRGB(40, 40, 40); UniGearInput.TextColor3 = Color3.new(1,1,1)
+Instance.new("UICorner", UniGearInput)
 
-local GPSpoofBtn = Instance.new("TextButton", Main)
-GPSpoofBtn.Size = UDim2.new(0.9, 0, 0, 35); GPSpoofBtn.Position = UDim2.new(0.05, 0, 0.22, 0)
-GPSpoofBtn.Text = "SPOOF ID"; GPSpoofBtn.BackgroundColor3 = Color3.fromRGB(0, 150, 100)
-GPSpoofBtn.TextColor3 = Color3.new(1,1,1); Instance.new("UICorner", GPSpoofBtn)
-GPSpoofBtn.MouseButton1Click:Connect(function()
-    if GPInput.Text ~= "" then
-        table.insert(SpoofedIDs, GPInput.Text)
-        GPInput.Text = "Spoofed!"; task.wait(1); GPInput.Text = ""
-    end
-end)
+local UniGearBtn = Instance.new("TextButton", Main)
+UniGearBtn.Size = UDim2.new(0.9, 0, 0, 35); UniGearBtn.Text = "GET UNIVERSAL GEAR"; UniGearBtn.BackgroundColor3 = Color3.fromRGB(0, 150, 100); UniGearBtn.TextColor3 = Color3.new(1,1,1)
+Instance.new("UICorner", UniGearBtn)
+UniGearBtn.MouseButton1Click:Connect(function() GiveUniversalGear(UniGearInput.Text) end)
 
--- --- BUBBLE CHAT SECTION ---
+-- --- GAME GEAR (BY NAME) ---
+local GameGearInput = Instance.new("TextBox", Main)
+GameGearInput.Size = UDim2.new(0.9, 0, 0, 35); GameGearInput.PlaceholderText = "Game Gear Name..."; GameGearInput.BackgroundColor3 = Color3.fromRGB(40, 40, 40); GameGearInput.TextColor3 = Color3.new(1,1,1)
+Instance.new("UICorner", GameGearInput)
+
+local GameGearBtn = Instance.new("TextButton", Main)
+GameGearBtn.Size = UDim2.new(0.9, 0, 0, 35); GameGearBtn.Text = "GET GAME GEAR"; GameGearBtn.BackgroundColor3 = Color3.fromRGB(0, 100, 200); GameGearBtn.TextColor3 = Color3.new(1,1,1)
+Instance.new("UICorner", GameGearBtn)
+GameGearBtn.MouseButton1Click:Connect(function() GiveInGameGear(GameGearInput.Text) end)
+
+-- --- BUBBLE CHAT (FOR MUTE) ---
 local ChatInput = Instance.new("TextBox", Main)
-ChatInput.Size = UDim2.new(0.9, 0, 0, 35); ChatInput.Position = UDim2.new(0.05, 0, 0.35, 0)
-ChatInput.PlaceholderText = "Bubble Message..."; ChatInput.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-ChatInput.TextColor3 = Color3.new(1,1,1); Instance.new("UICorner", ChatInput)
+ChatInput.Size = UDim2.new(0.9, 0, 0, 35); ChatInput.PlaceholderText = "Mute Bypass Msg..."; ChatInput.BackgroundColor3 = Color3.fromRGB(40, 40, 40); ChatInput.TextColor3 = Color3.new(1,1,1)
+Instance.new("UICorner", ChatInput)
 
 local SendBtn = Instance.new("TextButton", Main)
-SendBtn.Size = UDim2.new(0.9, 0, 0, 35); SendBtn.Position = UDim2.new(0.05, 0, 0.45, 0)
-SendBtn.Text = "SEND BUBBLE"; SendBtn.BackgroundColor3 = Color3.fromRGB(120, 0, 200)
-SendBtn.TextColor3 = Color3.new(1,1,1); Instance.new("UICorner", SendBtn)
+SendBtn.Size = UDim2.new(0.9, 0, 0, 35); SendBtn.Text = "SEND BUBBLE"; SendBtn.BackgroundColor3 = Color3.fromRGB(120, 0, 200); SendBtn.TextColor3 = Color3.new(1,1,1)
+Instance.new("UICorner", SendBtn)
 SendBtn.MouseButton1Click:Connect(function()
     if ChatInput.Text ~= "" and Player.Character:FindFirstChild("Head") then
         local b = Instance.new("BillboardGui", Player.Character.Head); b.Size = UDim2.new(0, 200, 0, 50); b.ExtentsOffset = Vector3.new(0, 3, 0)
@@ -89,27 +97,25 @@ end)
 
 -- --- FLY ---
 local FlyBtn = Instance.new("TextButton", Main)
-FlyBtn.Size = UDim2.new(0.9, 0, 0, 40); FlyBtn.Position = UDim2.new(0.05, 0, 0.6, 0)
-FlyBtn.Text = "FLY: OFF"; FlyBtn.BackgroundColor3 = Color3.fromRGB(0, 120, 200)
-FlyBtn.TextColor3 = Color3.new(1,1,1); Instance.new("UICorner", FlyBtn)
+FlyBtn.Size = UDim2.new(0.9, 0, 0, 40); FlyBtn.Text = "FLY: OFF"; FlyBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 60); FlyBtn.TextColor3 = Color3.new(1,1,1)
+Instance.new("UICorner", FlyBtn)
 FlyBtn.MouseButton1Click:Connect(function()
     _G.Flying = not _G.Flying
     FlyBtn.Text = _G.Flying and "FLY: ON" or "FLY: OFF"
-    FlyBtn.BackgroundColor3 = _G.Flying and Color3.fromRGB(0, 200, 100) or Color3.fromRGB(0, 120, 200)
+    FlyBtn.BackgroundColor3 = _G.Flying and Color3.fromRGB(0, 200, 100) or Color3.fromRGB(60, 60, 60)
     if _G.Flying then
         task.spawn(function()
             local Root = Player.Character:WaitForChild("HumanoidRootPart")
             local BV = Instance.new("BodyVelocity", Root); BV.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
             local BG = Instance.new("BodyGyro", Root); BG.MaxTorque = Vector3.new(math.huge, math.huge, math.huge)
             while _G.Flying and not _G.HubStop do
-                BG.CFrame = Camera.CFrame
+                BG.CFrame = workspace.CurrentCamera.CFrame
                 local moveDir = Vector3.new(0,0,0)
-                if UIS:IsKeyDown(Enum.KeyCode.W) then moveDir = moveDir + Camera.CFrame.LookVector end
-                if UIS:IsKeyDown(Enum.KeyCode.S) then moveDir = moveDir - Camera.CFrame.LookVector end
-                if UIS:IsKeyDown(Enum.KeyCode.A) then moveDir = moveDir - Camera.CFrame.RightVector end
-                if UIS:IsKeyDown(Enum.KeyCode.D) then moveDir = moveDir + Camera.CFrame.RightVector end
+                if UIS:IsKeyDown(Enum.KeyCode.W) then moveDir = moveDir + workspace.CurrentCamera.CFrame.LookVector end
+                if UIS:IsKeyDown(Enum.KeyCode.S) then moveDir = moveDir - workspace.CurrentCamera.CFrame.LookVector end
+                if UIS:IsKeyDown(Enum.KeyCode.A) then moveDir = moveDir - workspace.CurrentCamera.CFrame.RightVector end
+                if UIS:IsKeyDown(Enum.KeyCode.D) then moveDir = moveDir + workspace.CurrentCamera.CFrame.RightVector end
                 BV.Velocity = (moveDir.Magnitude > 0) and (moveDir.Unit * 70) or Vector3.new(0,0,0)
-                for _,v in pairs(Player.Character:GetDescendants()) do if v:IsA("BasePart") then v.CanCollide = false end end
                 RunService.Stepped:Wait()
             end
             BV:Destroy(); BG:Destroy()
@@ -118,7 +124,6 @@ FlyBtn.MouseButton1Click:Connect(function()
 end)
 
 local CloseBtn = Instance.new("TextButton", Main)
-CloseBtn.Size = UDim2.new(0.9, 0, 0, 30); CloseBtn.Position = UDim2.new(0.05, 0, 0.9, 0)
-CloseBtn.Text = "Close Hub"; CloseBtn.BackgroundColor3 = Color3.fromRGB(150, 0, 0)
-CloseBtn.TextColor3 = Color3.new(1,1,1); Instance.new("UICorner", CloseBtn)
+CloseBtn.Size = UDim2.new(0.9, 0, 0, 35); CloseBtn.Text = "Close Hub"; CloseBtn.BackgroundColor3 = Color3.fromRGB(150, 0, 0); CloseBtn.TextColor3 = Color3.new(1,1,1)
+Instance.new("UICorner", CloseBtn)
 CloseBtn.MouseButton1Click:Connect(function() _G.HubStop = true; _G.Flying = false; ScreenGui:Destroy() end)
