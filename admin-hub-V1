@@ -1,5 +1,5 @@
 -- admin-hub-V1
--- Universal Admin Hub (Fly + Bubble Chat + Gamepass Spoofer)
+-- Universal Admin Hub (Fly + Bubble Chat + Stable Spoofer)
 -- Compatibility: Xeno Executor
 
 -- [1] CLEANUP
@@ -17,67 +17,85 @@ local Player = game.Players.LocalPlayer
 local Camera = workspace.CurrentCamera
 local UIS = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
+local MPS = game:GetService("MarketplaceService")
 
--- [2] UI CONSTRUCTION
+-- [2] STABLE SPOOFER LOGIC
+local SpoofedIDs = {}
+local mt = getrawmetatable(game)
+local oldNamecall = mt.__namecall
+setreadonly(mt, false)
+
+mt.__namecall = newcclosure(function(self, ...)
+    local method = getnamecallmethod()
+    local args = {...}
+    if method == "UserOwnsGamePassAsync" and self == MPS then
+        for _, id in pairs(SpoofedIDs) do
+            if args[2] == tonumber(id) then return true end
+        end
+    end
+    return oldNamecall(self, ...)
+end)
+setreadonly(mt, true)
+
+-- [3] UI CONSTRUCTION
 local ScreenGui = Instance.new("ScreenGui")
 pcall(function() ScreenGui.Parent = game:GetService("CoreGui") end)
 if not ScreenGui.Parent then ScreenGui.Parent = Player.PlayerGui end
 ScreenGui.Name = "AdminHubV1"
 
 local Main = Instance.new("Frame", ScreenGui)
-Main.Size = UDim2.new(0, 220, 0, 380)
-Main.Position = UDim2.new(0.5, -110, 0.4, -190)
+Main.Size = UDim2.new(0, 220, 0, 400)
+Main.Position = UDim2.new(0.5, -110, 0.4, -200)
 Main.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
 Main.Active = true
 Main.Draggable = true
 Instance.new("UICorner", Main)
 
 local Title = Instance.new("TextLabel", Main)
-Title.Size = UDim2.new(1, 0, 0, 40)
-Title.Text = "ADMIN HUB V1"
-Title.TextColor3 = Color3.new(1,1,1)
-Title.BackgroundTransparency = 1
-Title.Font = Enum.Font.GothamBold
+Title.Size = UDim2.new(1, 0, 0, 40); Title.Text = "ADMIN HUB V1"
+Title.TextColor3 = Color3.new(1,1,1); Title.BackgroundTransparency = 1; Title.Font = Enum.Font.GothamBold
 
--- --- CHAT SECTION (For 1-Day Suspension) ---
-local ChatInput = Instance.new("TextBox", Main)
-ChatInput.Size = UDim2.new(0.9, 0, 0, 35)
-ChatInput.Position = UDim2.new(0.05, 0, 0.15, 0)
-ChatInput.PlaceholderText = "Bubble Chat Message..."
-ChatInput.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-ChatInput.TextColor3 = Color3.new(1,1,1)
-Instance.new("UICorner", ChatInput)
+-- --- GAMEPASS SECTION ---
+local GPInput = Instance.new("TextBox", Main)
+GPInput.Size = UDim2.new(0.9, 0, 0, 35); GPInput.Position = UDim2.new(0.05, 0, 0.12, 0)
+GPInput.PlaceholderText = "Paste Gamepass ID..."; GPInput.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+GPInput.TextColor3 = Color3.new(1,1,1); Instance.new("UICorner", GPInput)
 
-local SendBtn = Instance.new("TextButton", Main)
-SendBtn.Size = UDim2.new(0.9, 0, 0, 35)
-SendBtn.Position = UDim2.new(0.05, 0, 0.26, 0)
-SendBtn.Text = "SEND BUBBLE"
-SendBtn.BackgroundColor3 = Color3.fromRGB(120, 0, 200)
-SendBtn.TextColor3 = Color3.new(1,1,1)
-Instance.new("UICorner", SendBtn)
-
-SendBtn.MouseButton1Click:Connect(function()
-    if ChatInput.Text ~= "" and Player.Character and Player.Character:FindFirstChild("Head") then
-        local b = Instance.new("BillboardGui", Player.Character.Head)
-        b.Size = UDim2.new(0, 200, 0, 50)
-        b.ExtentsOffset = Vector3.new(0, 3, 0)
-        local f = Instance.new("Frame", b); f.Size = UDim2.new(1,0,1,0); f.BackgroundColor3 = Color3.new(1,1,1)
-        Instance.new("UICorner", f)
-        local l = Instance.new("TextLabel", f); l.Size = UDim2.new(1,0,1,0); l.Text = ChatInput.Text; l.TextScaled = true; l.BackgroundTransparency = 1
-        task.delay(5, function() b:Destroy() end)
-        ChatInput.Text = ""
+local GPSpoofBtn = Instance.new("TextButton", Main)
+GPSpoofBtn.Size = UDim2.new(0.9, 0, 0, 35); GPSpoofBtn.Position = UDim2.new(0.05, 0, 0.22, 0)
+GPSpoofBtn.Text = "SPOOF ID"; GPSpoofBtn.BackgroundColor3 = Color3.fromRGB(0, 150, 100)
+GPSpoofBtn.TextColor3 = Color3.new(1,1,1); Instance.new("UICorner", GPSpoofBtn)
+GPSpoofBtn.MouseButton1Click:Connect(function()
+    if GPInput.Text ~= "" then
+        table.insert(SpoofedIDs, GPInput.Text)
+        GPInput.Text = "Spoofed!"; task.wait(1); GPInput.Text = ""
     end
 end)
 
--- --- FLY SECTION ---
-local FlyBtn = Instance.new("TextButton", Main)
-FlyBtn.Size = UDim2.new(0.9, 0, 0, 40)
-FlyBtn.Position = UDim2.new(0.05, 0, 0.45, 0)
-FlyBtn.Text = "FLY: OFF"
-FlyBtn.BackgroundColor3 = Color3.fromRGB(0, 120, 200)
-FlyBtn.TextColor3 = Color3.new(1,1,1)
-Instance.new("UICorner", FlyBtn)
+-- --- CHAT SECTION ---
+local ChatInput = Instance.new("TextBox", Main)
+ChatInput.Size = UDim2.new(0.9, 0, 0, 35); ChatInput.Position = UDim2.new(0.05, 0, 0.35, 0)
+ChatInput.PlaceholderText = "Type Message..."; ChatInput.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+ChatInput.TextColor3 = Color3.new(1,1,1); Instance.new("UICorner", ChatInput)
 
+local SendBtn = Instance.new("TextButton", Main)
+SendBtn.Size = UDim2.new(0.9, 0, 0, 35); SendBtn.Position = UDim2.new(0.05, 0, 0.45, 0)
+SendBtn.Text = "SEND BUBBLE"; SendBtn.BackgroundColor3 = Color3.fromRGB(120, 0, 200)
+SendBtn.TextColor3 = Color3.new(1,1,1); Instance.new("UICorner", SendBtn)
+SendBtn.MouseButton1Click:Connect(function()
+    if ChatInput.Text ~= "" and Player.Character:FindFirstChild("Head") then
+        local b = Instance.new("BillboardGui", Player.Character.Head); b.Size = UDim2.new(0, 200, 0, 50); b.ExtentsOffset = Vector3.new(0, 3, 0)
+        local f = Instance.new("Frame", b); f.Size = UDim2.new(1,0,1,0); f.BackgroundColor3 = Color3.new(1,1,1); Instance.new("UICorner", f)
+        local l = Instance.new("TextLabel", f); l.Size = UDim2.new(1,0,1,0); l.Text = ChatInput.Text; l.TextScaled = true; l.BackgroundTransparency = 1
+        task.delay(5, function() b:Destroy() end); ChatInput.Text = ""
+    end
+end)
+
+-- --- FLY ---
+local FlyBtn = Instance.new("TextButton", Main)
+FlyBtn.Size = UDim2.new(0.9, 0, 0, 40); FlyBtn.Position = UDim2.new(0.05, 0, 0.6, 0)
+FlyBtn.Text = "FLY: OFF"; FlyBtn.BackgroundColor3 = Color3.fromRGB(0, 120, 200)
+FlyBtn.TextColor3 = Color3.new(1,1,1); Instance.new("UICorner", FlyBtn)
 FlyBtn.MouseButton1Click:Connect(function()
     _G.Flying = not _G.Flying
     FlyBtn.Text = _G.Flying and "FLY: ON" or "FLY: OFF"
@@ -103,12 +121,8 @@ FlyBtn.MouseButton1Click:Connect(function()
     end
 end)
 
--- --- CLOSE ---
 local CloseBtn = Instance.new("TextButton", Main)
-CloseBtn.Size = UDim2.new(0.9, 0, 0, 30)
-CloseBtn.Position = UDim2.new(0.05, 0, 0.88, 0)
-CloseBtn.Text = "Close Hub"
-CloseBtn.BackgroundColor3 = Color3.fromRGB(150, 0, 0)
-CloseBtn.TextColor3 = Color3.new(1,1,1)
-Instance.new("UICorner", CloseBtn)
+CloseBtn.Size = UDim2.new(0.9, 0, 0, 30); CloseBtn.Position = UDim2.new(0.05, 0, 0.9, 0)
+CloseBtn.Text = "Close Hub"; CloseBtn.BackgroundColor3 = Color3.fromRGB(150, 0, 0)
+CloseBtn.TextColor3 = Color3.new(1,1,1); Instance.new("UICorner", CloseBtn)
 CloseBtn.MouseButton1Click:Connect(function() _G.HubStop = true; _G.Flying = false; ScreenGui:Destroy() end)
