@@ -1,8 +1,8 @@
 -- admin-hub-V1
--- Universal Admin Hub (UI Drag Fix + Dual Gear + Bubble Chat)
+-- Universal Admin Hub (Noclip Restored + R6 + Dummy + F3X)
 -- Compatibility: Xeno Executor
 
--- [1] CLEANUP & INITIALIZATION
+-- [1] CLEANUP
 if _G.HubRunning then 
     _G.HubStop = true 
     local old = game.CoreGui:FindFirstChild("AdminHubV1") or game.Players.LocalPlayer.PlayerGui:FindFirstChild("AdminHubV1")
@@ -16,34 +16,35 @@ local Player = game.Players.LocalPlayer
 local UIS = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
 
--- [2] GEAR LOGIC
-local function GiveUniversalGear(id)
-    local success, gear = pcall(function() return game:GetObjects("rbxassetid://" .. id)[1] end)
-    if success and gear then
-        gear.Parent = Player.Backpack
+-- [2] UTILITY FUNCTIONS
+local function GiveF3X()
+    local f3x = game:GetObjects("rbxassetid://142785488")[1]
+    if f3x then f3x.Parent = Player.Backpack end
+end
+
+local function SummonDummy()
+    local dummy = game:GetObjects("rbxassetid://5630733321")[1]
+    if dummy then
+        dummy.Parent = workspace
+        dummy:MoveTo(Player.Character.HumanoidRootPart.Position + Player.Character.HumanoidRootPart.CFrame.LookVector * 5)
     end
 end
 
-local function GiveInGameGear(name)
-    local found = false
-    local locations = {game:GetService("ReplicatedStorage"), game:GetService("Lighting"), game:GetService("StarterPack")}
-    for _, loc in pairs(locations) do
-        local tool = loc:FindFirstChild(name, true)
-        if tool and tool:IsA("Tool") then
-            tool:Clone().Parent = Player.Backpack
-            found = true
-            break
-        end
+local function ForceR6()
+    local char = Player.Character
+    if char and char:FindFirstChild("Humanoid") then
+        local description = game:GetService("Players"):GetHumanoidDescriptionFromUserId(Player.UserId)
+        Player:LoadCharacterWithHumanoidDescription(description)
     end
 end
 
--- [3] UI CONSTRUCTION (DRAG-SAFE STRUCTURE)
+-- [3] UI CONSTRUCTION
 local ScreenGui = Instance.new("ScreenGui")
 pcall(function() ScreenGui.Parent = game:GetService("CoreGui") end)
 if not ScreenGui.Parent then ScreenGui.Parent = Player.PlayerGui end
 ScreenGui.Name = "AdminHubV1"
 
--- THE DRAG HANDLE (Click this top bar to move the GUI)
+-- THE DRAG HANDLE (ONLY part that moves the GUI)
 local DragFrame = Instance.new("Frame", ScreenGui)
 DragFrame.Size = UDim2.new(0, 240, 0, 40)
 DragFrame.Position = UDim2.new(0.5, -120, 0.3, 0)
@@ -53,58 +54,40 @@ DragFrame.Draggable = true
 Instance.new("UICorner", DragFrame)
 
 local Title = Instance.new("TextLabel", DragFrame)
-Title.Size = UDim2.new(1, 0, 1, 0)
-Title.Text = "ADMIN HUB V1 (DRAG HERE)"
-Title.TextColor3 = Color3.new(1,1,1)
-Title.BackgroundTransparency = 1
-Title.Font = Enum.Font.GothamBold
-Title.TextSize = 14
+Title.Size = UDim2.new(1, 0, 1, 0); Title.Text = "ADMIN HUB V1 (DRAG)"; Title.TextColor3 = Color3.new(1,1,1)
+Title.BackgroundTransparency = 1; Title.Font = Enum.Font.GothamBold
 
--- THE CONTENT BODY (Attached to the drag handle)
+-- THE CONTENT BODY
 local Main = Instance.new("Frame", DragFrame)
-Main.Size = UDim2.new(1, 0, 0, 360)
+Main.Size = UDim2.new(1, 0, 0, 400)
 Main.Position = UDim2.new(0, 0, 1, 5)
 Main.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
 Instance.new("UICorner", Main)
 
 local Scroll = Instance.new("ScrollingFrame", Main)
-Scroll.Size = UDim2.new(1, -10, 1, -10)
-Scroll.Position = UDim2.new(0, 5, 0, 5)
-Scroll.BackgroundTransparency = 1
-Scroll.CanvasSize = UDim2.new(0, 0, 2, 0)
-Scroll.ScrollBarThickness = 2
+Scroll.Size = UDim2.new(1, -10, 1, -10); Scroll.Position = UDim2.new(0, 5, 0, 5)
+Scroll.BackgroundTransparency = 1; Scroll.CanvasSize = UDim2.new(0, 0, 2.5, 0); Scroll.ScrollBarThickness = 2
 
 local UIList = Instance.new("UIListLayout", Scroll)
 UIList.Padding = UDim.new(0, 8); UIList.HorizontalAlignment = Enum.HorizontalAlignment.Center
 
--- Helper UI Functions
-local function NewInput(placeholder)
-    local i = Instance.new("TextBox", Scroll)
-    i.Size = UDim2.new(0.9, 0, 0, 35); i.PlaceholderText = placeholder
-    i.BackgroundColor3 = Color3.fromRGB(45, 45, 45); i.TextColor3 = Color3.new(1,1,1)
-    Instance.new("UICorner", i); return i
-end
-
 local function NewBtn(text, color)
     local b = Instance.new("TextButton", Scroll)
-    b.Size = UDim2.new(0.9, 0, 0, 35); b.Text = text
-    b.BackgroundColor3 = color; b.TextColor3 = Color3.new(1,1,1)
+    b.Size = UDim2.new(0.9, 0, 0, 35); b.Text = text; b.BackgroundColor3 = color; b.TextColor3 = Color3.new(1,1,1)
     Instance.new("UICorner", b); return b
 end
 
--- --- GEAR MENUS ---
-local UniInput = NewInput("Catalog Gear ID...")
-local UniBtn = NewBtn("GET CATALOG GEAR", Color3.fromRGB(0, 150, 100))
-UniBtn.MouseButton1Click:Connect(function() GiveUniversalGear(UniInput.Text) end)
+-- --- BUTTONS ---
+NewBtn("GET F3X BTOOLS", Color3.fromRGB(50, 50, 200)).MouseButton1Click:Connect(GiveF3X)
+NewBtn("SUMMON DUMMY", Color3.fromRGB(150, 150, 0)).MouseButton1Click:Connect(SummonDummy)
+NewBtn("CONVERT TO R6", Color3.fromRGB(100, 100, 100)).MouseButton1Click:Connect(ForceR6)
 
-local GameInput = NewInput("In-Game Gear Name...")
-local GameBtn = NewBtn("GET GAME GEAR", Color3.fromRGB(0, 100, 200))
-GameBtn.MouseButton1Click:Connect(function() GiveInGameGear(GameInput.Text) end)
+-- --- BUBBLE CHAT ---
+local ChatInput = Instance.new("TextBox", Scroll)
+ChatInput.Size = UDim2.new(0.9, 0, 0, 35); ChatInput.PlaceholderText = "Bubble Message..."; ChatInput.BackgroundColor3 = Color3.fromRGB(45, 45, 45); ChatInput.TextColor3 = Color3.new(1,1,1)
+Instance.new("UICorner", ChatInput)
 
--- --- BUBBLE CHAT (MUTE BYPASS) ---
-local ChatInput = NewInput("Bubble Message...")
-local SendBtn = NewBtn("SEND BUBBLE", Color3.fromRGB(120, 0, 200))
-SendBtn.MouseButton1Click:Connect(function()
+NewBtn("SEND BUBBLE", Color3.fromRGB(120, 0, 200)).MouseButton1Click:Connect(function()
     if ChatInput.Text ~= "" and Player.Character:FindFirstChild("Head") then
         local b = Instance.new("BillboardGui", Player.Character.Head); b.Size = UDim2.new(0, 200, 0, 50); b.ExtentsOffset = Vector3.new(0, 3, 0)
         local f = Instance.new("Frame", b); f.Size = UDim2.new(1,0,1,0); f.BackgroundColor3 = Color3.new(1,1,1); Instance.new("UICorner", f)
@@ -113,17 +96,19 @@ SendBtn.MouseButton1Click:Connect(function()
     end
 end)
 
--- --- FLY ---
-local FlyBtn = NewBtn("FLY: OFF", Color3.fromRGB(60, 60, 60))
+-- --- FLY + NOCLIP ---
+local FlyBtn = NewBtn("FLY & NOCLIP: OFF", Color3.fromRGB(60, 60, 60))
 FlyBtn.MouseButton1Click:Connect(function()
     _G.Flying = not _G.Flying
-    FlyBtn.Text = _G.Flying and "FLY: ON" or "FLY: OFF"
+    FlyBtn.Text = _G.Flying and "FLY & NOCLIP: ON" or "FLY & NOCLIP: OFF"
     FlyBtn.BackgroundColor3 = _G.Flying and Color3.fromRGB(0, 200, 100) or Color3.fromRGB(60, 60, 60)
+    
     if _G.Flying then
         task.spawn(function()
             local Root = Player.Character:WaitForChild("HumanoidRootPart")
             local BV = Instance.new("BodyVelocity", Root); BV.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
             local BG = Instance.new("BodyGyro", Root); BG.MaxTorque = Vector3.new(math.huge, math.huge, math.huge)
+            
             while _G.Flying and not _G.HubStop do
                 BG.CFrame = workspace.CurrentCamera.CFrame
                 local moveDir = Vector3.new(0,0,0)
@@ -132,6 +117,11 @@ FlyBtn.MouseButton1Click:Connect(function()
                 if UIS:IsKeyDown(Enum.KeyCode.A) then moveDir = moveDir - workspace.CurrentCamera.CFrame.RightVector end
                 if UIS:IsKeyDown(Enum.KeyCode.D) then moveDir = moveDir + workspace.CurrentCamera.CFrame.RightVector end
                 BV.Velocity = (moveDir.Magnitude > 0) and (moveDir.Unit * 70) or Vector3.new(0,0,0)
+                
+                -- The Noclip Logic:
+                for _, part in pairs(Player.Character:GetDescendants()) do
+                    if part:IsA("BasePart") then part.CanCollide = false end
+                end
                 RunService.Stepped:Wait()
             end
             BV:Destroy(); BG:Destroy()
@@ -139,6 +129,4 @@ FlyBtn.MouseButton1Click:Connect(function()
     end
 end)
 
--- --- CLOSE ---
-local CloseBtn = NewBtn("Close Hub", Color3.fromRGB(150, 0, 0))
-CloseBtn.MouseButton1Click:Connect(function() _G.HubStop = true; _G.Flying = false; ScreenGui:Destroy() end)
+NewBtn("Close Hub", Color3.fromRGB(150, 0, 0)).MouseButton1Click:Connect(function() _G.HubStop = true; _G.Flying = false; ScreenGui:Destroy() end)
