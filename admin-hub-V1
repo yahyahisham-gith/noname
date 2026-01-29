@@ -1,5 +1,5 @@
 -- admin-hub-V1
--- Universal Admin Hub (Fly, Noclip, Speed, ESP, Inf Jump)
+-- Universal Admin Hub (Fixed WASD + Aggressive Noclip)
 -- Compatibility: Xeno Executor
 
 -- [1] KILLSWITCH & CLEANUP
@@ -21,9 +21,7 @@ local Camera = workspace.CurrentCamera
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 
--- [2] UTILITY FUNCTIONS
-
--- Fly & Noclip Logic
+-- [2] FLY & NOCLIP LOGIC
 local function ToggleFly(button)
     _G.Flying = not _G.Flying
     local Character = Player.Character
@@ -34,25 +32,43 @@ local function ToggleFly(button)
     if _G.Flying then
         button.Text = "Fly: ON"
         button.BackgroundColor3 = Color3.fromRGB(0, 200, 100)
+        
         local BV = Instance.new("BodyVelocity", Root)
         local BG = Instance.new("BodyGyro", Root)
-        BV.Name = "HubFlyBV"
-        BG.Name = "HubFlyBG"
         BV.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
         BG.MaxTorque = Vector3.new(math.huge, math.huge, math.huge)
         BG.P = 15000
         
+        local Speed = 60
+
         task.spawn(function()
             while _G.Flying and not _G.HubStop and Character and Character.Parent do
                 BG.CFrame = Camera.CFrame
-                local MoveDirection = Humanoid.MoveDirection
-                BV.Velocity = (MoveDirection.Magnitude > 0) and (Camera.CFrame.LookVector * (MoveDirection.Magnitude * 60)) or Vector3.new(0,0,0)
-                Humanoid:ChangeState(11) -- Noclip
-                RunService.RenderStepped:Wait()
+                
+                -- FIXED DIRECTIONAL MOVEMENT
+                local look = Camera.CFrame.LookVector
+                local right = Camera.CFrame.RightVector
+                local moveDir = Vector3.new(0,0,0)
+                
+                if UserInputService:IsKeyDown(Enum.KeyCode.W) then moveDir = moveDir + look end
+                if UserInputService:IsKeyDown(Enum.KeyCode.S) then moveDir = moveDir - look end
+                if UserInputService:IsKeyDown(Enum.KeyCode.A) then moveDir = moveDir - right end
+                if UserInputService:IsKeyDown(Enum.KeyCode.D) then moveDir = moveDir + right end
+                
+                BV.Velocity = moveDir.Unit * Speed
+                if moveDir.Magnitude == 0 then BV.Velocity = Vector3.new(0,0,0) end
+
+                -- AGGRESSIVE NOCLIP
+                for _, part in pairs(Character:GetDescendants()) do
+                    if part:IsA("BasePart") and part.CanCollide then
+                        part.CanCollide = false
+                    end
+                end
+                
+                RunService.Stepped:Wait()
             end
             if BV then BV:Destroy() end
             if BG then BG:Destroy() end
-            if Humanoid then Humanoid:ChangeState(8) end
         end)
     else
         button.Text = "Fly: OFF"
@@ -60,7 +76,7 @@ local function ToggleFly(button)
     end
 end
 
--- ESP Logic (Highlights)
+-- [3] ESP LOGIC
 local function ToggleESP(button)
     _G.ESP = not _G.ESP
     button.Text = _G.ESP and "ESP: ON" or "ESP: OFF"
@@ -72,9 +88,9 @@ local function ToggleESP(button)
                 for _, p in pairs(game.Players:GetPlayers()) do
                     if p ~= Player and p.Character then
                         if not p.Character:FindFirstChild("ESPHighlight") then
-                            local Highlight = Instance.new("Highlight", p.Character)
-                            Highlight.Name = "ESPHighlight"
-                            Highlight.FillColor = Color3.fromRGB(255, 0, 0)
+                            local h = Instance.new("Highlight", p.Character)
+                            h.Name = "ESPHighlight"
+                            h.FillColor = Color3.fromRGB(255, 0, 0)
                         end
                     end
                 end
@@ -96,7 +112,7 @@ UserInputService.JumpRequest:Connect(function()
     end
 end)
 
--- [3] UI CREATION
+-- [4] UI CREATION
 local ScreenGui = Instance.new("ScreenGui")
 pcall(function() ScreenGui.Parent = game:GetService("CoreGui") end)
 if not ScreenGui.Parent then ScreenGui.Parent = Player.PlayerGui end
@@ -130,7 +146,7 @@ local function CreateButton(text, pos, color, func)
     return btn
 end
 
--- [4] BUTTONS
+-- [5] BUTTONS
 CreateButton("Fly & Noclip: OFF", UDim2.new(0.05, 0, 0.15, 0), Color3.fromRGB(0, 120, 200), ToggleFly)
 CreateButton("Speed: 100", UDim2.new(0.05, 0, 0.28, 0), Color3.fromRGB(80, 80, 80), function()
     if Player.Character then Player.Character.Humanoid.WalkSpeed = 100 end
