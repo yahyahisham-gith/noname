@@ -1,8 +1,8 @@
 -- admin-hub-V1
--- Universal Admin Hub (Draggable + Dual Gear + Bubble Chat)
+-- Universal Admin Hub (UI Drag Fix + Dual Gear + Bubble Chat)
 -- Compatibility: Xeno Executor
 
--- [1] CLEANUP
+-- [1] CLEANUP & INITIALIZATION
 if _G.HubRunning then 
     _G.HubStop = true 
     local old = game.CoreGui:FindFirstChild("AdminHubV1") or game.Players.LocalPlayer.PlayerGui:FindFirstChild("AdminHubV1")
@@ -11,7 +11,6 @@ if _G.HubRunning then
 end
 _G.HubRunning = true
 _G.HubStop = false
-_G.Flying = false
 
 local Player = game.Players.LocalPlayer
 local UIS = game:GetService("UserInputService")
@@ -26,7 +25,6 @@ local function GiveUniversalGear(id)
 end
 
 local function GiveInGameGear(name)
-    -- Searches ReplicatedStorage, Lighting, and StarterPack for the gear
     local found = false
     local locations = {game:GetService("ReplicatedStorage"), game:GetService("Lighting"), game:GetService("StarterPack")}
     for _, loc in pairs(locations) do
@@ -37,44 +35,53 @@ local function GiveInGameGear(name)
             break
         end
     end
-    if not found then print("Gear not found in game files: " .. name) end
 end
 
--- [3] UI CONSTRUCTION
+-- [3] UI CONSTRUCTION (DRAG-SAFE STRUCTURE)
 local ScreenGui = Instance.new("ScreenGui")
 pcall(function() ScreenGui.Parent = game:GetService("CoreGui") end)
 if not ScreenGui.Parent then ScreenGui.Parent = Player.PlayerGui end
 ScreenGui.Name = "AdminHubV1"
 
--- Main Container (This is what you click to drag)
-local Main = Instance.new("Frame", ScreenGui)
-Main.Size = UDim2.new(0, 240, 0, 400)
-Main.Position = UDim2.new(0.5, -120, 0.4, -200)
+-- THE DRAG HANDLE (Click this top bar to move the GUI)
+local DragFrame = Instance.new("Frame", ScreenGui)
+DragFrame.Size = UDim2.new(0, 240, 0, 40)
+DragFrame.Position = UDim2.new(0.5, -120, 0.3, 0)
+DragFrame.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+DragFrame.Active = true
+DragFrame.Draggable = true 
+Instance.new("UICorner", DragFrame)
+
+local Title = Instance.new("TextLabel", DragFrame)
+Title.Size = UDim2.new(1, 0, 1, 0)
+Title.Text = "ADMIN HUB V1 (DRAG HERE)"
+Title.TextColor3 = Color3.new(1,1,1)
+Title.BackgroundTransparency = 1
+Title.Font = Enum.Font.GothamBold
+Title.TextSize = 14
+
+-- THE CONTENT BODY (Attached to the drag handle)
+local Main = Instance.new("Frame", DragFrame)
+Main.Size = UDim2.new(1, 0, 0, 360)
+Main.Position = UDim2.new(0, 0, 1, 5)
 Main.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
-Main.Active = true
-Main.Draggable = true -- Standard dragging enabled on the outer frame
 Instance.new("UICorner", Main)
 
-local Title = Instance.new("TextLabel", Main)
-Title.Size = UDim2.new(1, 0, 0, 40); Title.Text = "ADMIN HUB V1"; Title.TextColor3 = Color3.new(1,1,1)
-Title.BackgroundTransparency = 1; Title.Font = Enum.Font.GothamBold
-
--- Scroll Area (Inside the main frame)
 local Scroll = Instance.new("ScrollingFrame", Main)
-Scroll.Size = UDim2.new(1, 0, 1, -50)
-Scroll.Position = UDim2.new(0, 0, 0, 45)
+Scroll.Size = UDim2.new(1, -10, 1, -10)
+Scroll.Position = UDim2.new(0, 5, 0, 5)
 Scroll.BackgroundTransparency = 1
-Scroll.CanvasSize = UDim2.new(0, 0, 1.8, 0)
-Scroll.ScrollBarThickness = 4
+Scroll.CanvasSize = UDim2.new(0, 0, 2, 0)
+Scroll.ScrollBarThickness = 2
 
 local UIList = Instance.new("UIListLayout", Scroll)
 UIList.Padding = UDim.new(0, 8); UIList.HorizontalAlignment = Enum.HorizontalAlignment.Center
 
--- Helper to make buttons/inputs
+-- Helper UI Functions
 local function NewInput(placeholder)
     local i = Instance.new("TextBox", Scroll)
     i.Size = UDim2.new(0.9, 0, 0, 35); i.PlaceholderText = placeholder
-    i.BackgroundColor3 = Color3.fromRGB(40, 40, 40); i.TextColor3 = Color3.new(1,1,1)
+    i.BackgroundColor3 = Color3.fromRGB(45, 45, 45); i.TextColor3 = Color3.new(1,1,1)
     Instance.new("UICorner", i); return i
 end
 
@@ -85,18 +92,16 @@ local function NewBtn(text, color)
     Instance.new("UICorner", b); return b
 end
 
--- --- GEAR MENU 1: CATALOG IDs ---
+-- --- GEAR MENUS ---
 local UniInput = NewInput("Catalog Gear ID...")
 local UniBtn = NewBtn("GET CATALOG GEAR", Color3.fromRGB(0, 150, 100))
 UniBtn.MouseButton1Click:Connect(function() GiveUniversalGear(UniInput.Text) end)
 
--- --- GEAR MENU 2: IN-GAME GEAR ---
 local GameInput = NewInput("In-Game Gear Name...")
 local GameBtn = NewBtn("GET GAME GEAR", Color3.fromRGB(0, 100, 200))
 GameBtn.MouseButton1Click:Connect(function() GiveInGameGear(GameInput.Text) end)
 
 -- --- BUBBLE CHAT (MUTE BYPASS) ---
--- Use this while your 1-day suspension is active
 local ChatInput = NewInput("Bubble Message...")
 local SendBtn = NewBtn("SEND BUBBLE", Color3.fromRGB(120, 0, 200))
 SendBtn.MouseButton1Click:Connect(function()
