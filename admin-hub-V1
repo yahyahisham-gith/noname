@@ -1,5 +1,5 @@
 -- admin-hub-V1
--- Universal Admin Hub (Fly + Bubble Chat + Dual Gear Menus)
+-- Universal Admin Hub (Draggable + Dual Gear + Bubble Chat)
 -- Compatibility: Xeno Executor
 
 -- [1] CLEANUP
@@ -11,6 +11,7 @@ if _G.HubRunning then
 end
 _G.HubRunning = true
 _G.HubStop = false
+_G.Flying = false
 
 local Player = game.Players.LocalPlayer
 local UIS = game:GetService("UserInputService")
@@ -18,21 +19,25 @@ local RunService = game:GetService("RunService")
 
 -- [2] GEAR LOGIC
 local function GiveUniversalGear(id)
-    local gear = game:GetObjects("rbxassetid://" .. id)[1]
-    if gear then
+    local success, gear = pcall(function() return game:GetObjects("rbxassetid://" .. id)[1] end)
+    if success and gear then
         gear.Parent = Player.Backpack
     end
 end
 
 local function GiveInGameGear(name)
-    -- Searches common storage areas for the gear
-    local storage = game:GetService("ReplicatedStorage")
-    local gear = storage:FindFirstChild(name, true) or game:GetService("Lighting"):FindFirstChild(name, true)
-    if gear and gear:IsA("Tool") then
-        gear:Clone().Parent = Player.Backpack
-    else
-        print("Gear not found in game storage: " .. name)
+    -- Searches ReplicatedStorage, Lighting, and StarterPack for the gear
+    local found = false
+    local locations = {game:GetService("ReplicatedStorage"), game:GetService("Lighting"), game:GetService("StarterPack")}
+    for _, loc in pairs(locations) do
+        local tool = loc:FindFirstChild(name, true)
+        if tool and tool:IsA("Tool") then
+            tool:Clone().Parent = Player.Backpack
+            found = true
+            break
+        end
     end
+    if not found then print("Gear not found in game files: " .. name) end
 end
 
 -- [3] UI CONSTRUCTION
@@ -41,51 +46,59 @@ pcall(function() ScreenGui.Parent = game:GetService("CoreGui") end)
 if not ScreenGui.Parent then ScreenGui.Parent = Player.PlayerGui end
 ScreenGui.Name = "AdminHubV1"
 
-local Main = Instance.new("ScrollingFrame", ScreenGui)
-Main.Size = UDim2.new(0, 240, 0, 450)
-Main.Position = UDim2.new(0.5, -120, 0.4, -225)
+-- Main Container (This is what you click to drag)
+local Main = Instance.new("Frame", ScreenGui)
+Main.Size = UDim2.new(0, 240, 0, 400)
+Main.Position = UDim2.new(0.5, -120, 0.4, -200)
 Main.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
-Main.CanvasSize = UDim2.new(0, 0, 1.5, 0)
 Main.Active = true
-Main.Draggable = true
+Main.Draggable = true -- Standard dragging enabled on the outer frame
 Instance.new("UICorner", Main)
-
-local UIList = Instance.new("UIListLayout", Main)
-UIList.Padding = UDim.new(0, 10)
-UIList.HorizontalAlignment = Enum.HorizontalAlignment.Center
 
 local Title = Instance.new("TextLabel", Main)
 Title.Size = UDim2.new(1, 0, 0, 40); Title.Text = "ADMIN HUB V1"; Title.TextColor3 = Color3.new(1,1,1)
 Title.BackgroundTransparency = 1; Title.Font = Enum.Font.GothamBold
 
--- --- UNIVERSAL GEAR (CATALOG ID) ---
-local UniGearInput = Instance.new("TextBox", Main)
-UniGearInput.Size = UDim2.new(0.9, 0, 0, 35); UniGearInput.PlaceholderText = "Catalog Gear ID..."; UniGearInput.BackgroundColor3 = Color3.fromRGB(40, 40, 40); UniGearInput.TextColor3 = Color3.new(1,1,1)
-Instance.new("UICorner", UniGearInput)
+-- Scroll Area (Inside the main frame)
+local Scroll = Instance.new("ScrollingFrame", Main)
+Scroll.Size = UDim2.new(1, 0, 1, -50)
+Scroll.Position = UDim2.new(0, 0, 0, 45)
+Scroll.BackgroundTransparency = 1
+Scroll.CanvasSize = UDim2.new(0, 0, 1.8, 0)
+Scroll.ScrollBarThickness = 4
 
-local UniGearBtn = Instance.new("TextButton", Main)
-UniGearBtn.Size = UDim2.new(0.9, 0, 0, 35); UniGearBtn.Text = "GET UNIVERSAL GEAR"; UniGearBtn.BackgroundColor3 = Color3.fromRGB(0, 150, 100); UniGearBtn.TextColor3 = Color3.new(1,1,1)
-Instance.new("UICorner", UniGearBtn)
-UniGearBtn.MouseButton1Click:Connect(function() GiveUniversalGear(UniGearInput.Text) end)
+local UIList = Instance.new("UIListLayout", Scroll)
+UIList.Padding = UDim.new(0, 8); UIList.HorizontalAlignment = Enum.HorizontalAlignment.Center
 
--- --- GAME GEAR (BY NAME) ---
-local GameGearInput = Instance.new("TextBox", Main)
-GameGearInput.Size = UDim2.new(0.9, 0, 0, 35); GameGearInput.PlaceholderText = "Game Gear Name..."; GameGearInput.BackgroundColor3 = Color3.fromRGB(40, 40, 40); GameGearInput.TextColor3 = Color3.new(1,1,1)
-Instance.new("UICorner", GameGearInput)
+-- Helper to make buttons/inputs
+local function NewInput(placeholder)
+    local i = Instance.new("TextBox", Scroll)
+    i.Size = UDim2.new(0.9, 0, 0, 35); i.PlaceholderText = placeholder
+    i.BackgroundColor3 = Color3.fromRGB(40, 40, 40); i.TextColor3 = Color3.new(1,1,1)
+    Instance.new("UICorner", i); return i
+end
 
-local GameGearBtn = Instance.new("TextButton", Main)
-GameGearBtn.Size = UDim2.new(0.9, 0, 0, 35); GameGearBtn.Text = "GET GAME GEAR"; GameGearBtn.BackgroundColor3 = Color3.fromRGB(0, 100, 200); GameGearBtn.TextColor3 = Color3.new(1,1,1)
-Instance.new("UICorner", GameGearBtn)
-GameGearBtn.MouseButton1Click:Connect(function() GiveInGameGear(GameGearInput.Text) end)
+local function NewBtn(text, color)
+    local b = Instance.new("TextButton", Scroll)
+    b.Size = UDim2.new(0.9, 0, 0, 35); b.Text = text
+    b.BackgroundColor3 = color; b.TextColor3 = Color3.new(1,1,1)
+    Instance.new("UICorner", b); return b
+end
 
--- --- BUBBLE CHAT (FOR MUTE) ---
-local ChatInput = Instance.new("TextBox", Main)
-ChatInput.Size = UDim2.new(0.9, 0, 0, 35); ChatInput.PlaceholderText = "Mute Bypass Msg..."; ChatInput.BackgroundColor3 = Color3.fromRGB(40, 40, 40); ChatInput.TextColor3 = Color3.new(1,1,1)
-Instance.new("UICorner", ChatInput)
+-- --- GEAR MENU 1: CATALOG IDs ---
+local UniInput = NewInput("Catalog Gear ID...")
+local UniBtn = NewBtn("GET CATALOG GEAR", Color3.fromRGB(0, 150, 100))
+UniBtn.MouseButton1Click:Connect(function() GiveUniversalGear(UniInput.Text) end)
 
-local SendBtn = Instance.new("TextButton", Main)
-SendBtn.Size = UDim2.new(0.9, 0, 0, 35); SendBtn.Text = "SEND BUBBLE"; SendBtn.BackgroundColor3 = Color3.fromRGB(120, 0, 200); SendBtn.TextColor3 = Color3.new(1,1,1)
-Instance.new("UICorner", SendBtn)
+-- --- GEAR MENU 2: IN-GAME GEAR ---
+local GameInput = NewInput("In-Game Gear Name...")
+local GameBtn = NewBtn("GET GAME GEAR", Color3.fromRGB(0, 100, 200))
+GameBtn.MouseButton1Click:Connect(function() GiveInGameGear(GameInput.Text) end)
+
+-- --- BUBBLE CHAT (MUTE BYPASS) ---
+-- Use this while your 1-day suspension is active
+local ChatInput = NewInput("Bubble Message...")
+local SendBtn = NewBtn("SEND BUBBLE", Color3.fromRGB(120, 0, 200))
 SendBtn.MouseButton1Click:Connect(function()
     if ChatInput.Text ~= "" and Player.Character:FindFirstChild("Head") then
         local b = Instance.new("BillboardGui", Player.Character.Head); b.Size = UDim2.new(0, 200, 0, 50); b.ExtentsOffset = Vector3.new(0, 3, 0)
@@ -96,9 +109,7 @@ SendBtn.MouseButton1Click:Connect(function()
 end)
 
 -- --- FLY ---
-local FlyBtn = Instance.new("TextButton", Main)
-FlyBtn.Size = UDim2.new(0.9, 0, 0, 40); FlyBtn.Text = "FLY: OFF"; FlyBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 60); FlyBtn.TextColor3 = Color3.new(1,1,1)
-Instance.new("UICorner", FlyBtn)
+local FlyBtn = NewBtn("FLY: OFF", Color3.fromRGB(60, 60, 60))
 FlyBtn.MouseButton1Click:Connect(function()
     _G.Flying = not _G.Flying
     FlyBtn.Text = _G.Flying and "FLY: ON" or "FLY: OFF"
@@ -123,7 +134,6 @@ FlyBtn.MouseButton1Click:Connect(function()
     end
 end)
 
-local CloseBtn = Instance.new("TextButton", Main)
-CloseBtn.Size = UDim2.new(0.9, 0, 0, 35); CloseBtn.Text = "Close Hub"; CloseBtn.BackgroundColor3 = Color3.fromRGB(150, 0, 0); CloseBtn.TextColor3 = Color3.new(1,1,1)
-Instance.new("UICorner", CloseBtn)
+-- --- CLOSE ---
+local CloseBtn = NewBtn("Close Hub", Color3.fromRGB(150, 0, 0))
 CloseBtn.MouseButton1Click:Connect(function() _G.HubStop = true; _G.Flying = false; ScreenGui:Destroy() end)
