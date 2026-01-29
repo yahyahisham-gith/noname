@@ -1,5 +1,5 @@
 -- admin-hub-V1
--- Universal Admin Hub (WASD Fly, ESP, Inf Jump, Custom Bubble Chat)
+-- Universal Admin Hub (WASD Fly + Tool-Name Chat Bypass)
 -- Compatibility: Xeno Executor
 
 -- [1] KILLSWITCH & CLEANUP
@@ -9,104 +9,46 @@ if _G.HubRunning then
     if oldGui then oldGui:Destroy() end
     task.wait(0.3) 
 end
-
 _G.HubRunning = true
 _G.HubStop = false
-_G.Flying = false 
-_G.InfJump = false
-_G.ESP = false
 
 local Player = game:GetService("Players").LocalPlayer
-local Camera = workspace.CurrentCamera
-local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 
--- [2] CUSTOM BUBBLE CHAT LOGIC (Bypasses Chat Suspension)
-local function CreateBubble(text)
-    local char = Player.Character
-    if not char or not char:FindFirstChild("Head") then return end
-    
-    -- Cleanup old bubbles
-    if char.Head:FindFirstChild("FakeChat") then char.Head.FakeChat:Destroy() end
-    
-    local Billboard = Instance.new("BillboardGui", char.Head)
-    Billboard.Name = "FakeChat"
-    Billboard.Size = UDim2.new(0, 200, 0, 50)
-    Billboard.ExtentsOffset = Vector3.new(0, 3, 0)
-    Billboard.AlwaysOnTop = true
-    
-    local Frame = Instance.new("Frame", Billboard)
-    Frame.Size = UDim2.new(1, 0, 1, 0)
-    Frame.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-    Instance.new("UICorner", Frame).CornerRadius = UDim.new(0, 8)
-    
-    local Label = Instance.new("TextLabel", Frame)
-    Label.Size = UDim2.new(1, 0, 1, 0)
-    Label.Text = text
-    Label.TextColor3 = Color3.fromRGB(0, 0, 0)
-    Label.BackgroundTransparency = 1
-    Label.TextScaled = true
-    Label.Font = Enum.Font.GothamBold
-    
-    -- Fade out and delete
-    task.delay(5, function()
-        for i = 0, 1, 0.1 do
-            if Billboard then
-                Frame.BackgroundTransparency = i
-                Label.TextTransparency = i
-                task.wait(0.05)
-            end
-        end
-        if Billboard then Billboard:Destroy() end
-    end)
-end
-
--- [3] FLY, ESP, & JUMP LOGIC (Previous Fixed Versions)
-local function ToggleFly(button)
-    _G.Flying = not _G.Flying
+-- [2] BYPASS CHAT LOGIC (Tool Name Method)
+-- This works because Tool names replicate to everyone when you hold them.
+local function SayViaTool(text)
     local Character = Player.Character
     if not Character then return end
-    local Root = Character:WaitForChild("HumanoidRootPart")
-    local Humanoid = Character:WaitForChild("Humanoid")
-    if _G.Flying then
-        button.Text = "Fly: ON"
-        button.BackgroundColor3 = Color3.fromRGB(0, 200, 100)
-        local BV = Instance.new("BodyVelocity", Root)
-        local BG = Instance.new("BodyGyro", Root)
-        BV.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
-        BG.MaxTorque = Vector3.new(math.huge, math.huge, math.huge)
-        task.spawn(function()
-            while _G.Flying and not _G.HubStop and Character and Character.Parent do
-                BG.CFrame = Camera.CFrame
-                local look, right, moveDir = Camera.CFrame.LookVector, Camera.CFrame.RightVector, Vector3.new(0,0,0)
-                if UserInputService:IsKeyDown(Enum.KeyCode.W) then moveDir = moveDir + look end
-                if UserInputService:IsKeyDown(Enum.KeyCode.S) then moveDir = moveDir - look end
-                if UserInputService:IsKeyDown(Enum.KeyCode.A) then moveDir = moveDir - right end
-                if UserInputService:IsKeyDown(Enum.KeyCode.D) then moveDir = moveDir + right end
-                BV.Velocity = moveDir.Unit * 60
-                if moveDir.Magnitude == 0 then BV.Velocity = Vector3.new(0,0,0) end
-                for _, part in pairs(Character:GetDescendants()) do
-                    if part:IsA("BasePart") then part.CanCollide = false end
-                end
-                RunService.Stepped:Wait()
-            end
-            if BV then BV:Destroy() end if BG then BG:Destroy() end
-        end)
+    
+    local Tool = Character:FindFirstChildOfClass("Tool") or Player.Backpack:FindFirstChildOfClass("Tool")
+    
+    if Tool then
+        Tool.Name = text
+        Tool.Parent = Character -- Equip it so they see the name change
+        task.wait(5)
+        Tool.Name = "AdminTool" -- Reset name after 5 seconds
     else
-        button.Text = "Fly: OFF"
-        button.BackgroundColor3 = Color3.fromRGB(0, 120, 200)
+        -- If no tool, we try the "Humanoid DisplayName" method (Works in many games)
+        local Humanoid = Character:FindFirstChild("Humanoid")
+        if Humanoid then
+            local oldName = Humanoid.DisplayName
+            Humanoid.DisplayName = "[CHAT]: " .. text
+            task.wait(5)
+            Humanoid.DisplayName = oldName
+        end
     end
 end
 
--- [4] UI CREATION
+-- [3] UI CREATION
 local ScreenGui = Instance.new("ScreenGui")
 pcall(function() ScreenGui.Parent = game:GetService("CoreGui") end)
 if not ScreenGui.Parent then ScreenGui.Parent = Player.PlayerGui end
 ScreenGui.Name = "AdminHubV1"
 
 local Main = Instance.new("Frame", ScreenGui)
-Main.Size = UDim2.new(0, 220, 0, 380) -- Adjusted for Chat button
-Main.Position = UDim2.new(0.5, -110, 0.4, -190)
+Main.Size = UDim2.new(0, 220, 0, 300)
+Main.Position = UDim2.new(0.5, -110, 0.4, -150)
 Main.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
 Main.Active = true
 Main.Draggable = true
@@ -114,71 +56,43 @@ Instance.new("UICorner", Main).CornerRadius = UDim.new(0, 10)
 
 local Title = Instance.new("TextLabel", Main)
 Title.Size = UDim2.new(1, 0, 0, 40)
-Title.Text = "ADMIN HUB V1"
+Title.Text = "ADMIN HUB V1 (BYPASS)"
 Title.TextColor3 = Color3.fromRGB(255, 255, 255)
 Title.BackgroundTransparency = 1
 Title.Font = Enum.Font.GothamBold
 
-local function CreateButton(text, pos, color, func)
-    local btn = Instance.new("TextButton", Main)
-    btn.Size = UDim2.new(0.9, 0, 0, 35)
-    btn.Position = pos
-    btn.Text = text
-    btn.BackgroundColor3 = color
-    btn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    btn.Font = Enum.Font.Gotham
-    Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 6)
-    btn.MouseButton1Click:Connect(function() func(btn) end)
-    return btn
-end
-
--- [5] BUTTONS
-CreateButton("Fly & Noclip: OFF", UDim2.new(0.05, 0, 0.12, 0), Color3.fromRGB(0, 120, 200), ToggleFly)
-
--- CUSTOM CHAT BUTTON
+-- CHAT BOX
 local ChatInput = Instance.new("TextBox", Main)
-ChatInput.Size = UDim2.new(0.9, 0, 0, 35)
-ChatInput.Position = UDim2.new(0.05, 0, 0.23, 0)
+ChatInput.Size = UDim2.new(0.9, 0, 0, 40)
+ChatInput.Position = UDim2.new(0.05, 0, 0.2, 0)
 ChatInput.PlaceholderText = "Type message here..."
-ChatInput.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
+ChatInput.Text = ""
+ChatInput.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
 ChatInput.TextColor3 = Color3.fromRGB(255, 255, 255)
 Instance.new("UICorner", ChatInput)
 
-CreateButton("SAY TO EVERYONE", UDim2.new(0.05, 0, 0.34, 0), Color3.fromRGB(120, 0, 200), function()
+-- SEND BUTTON
+local SendBtn = Instance.new("TextButton", Main)
+SendBtn.Size = UDim2.new(0.9, 0, 0, 40)
+SendBtn.Position = UDim2.new(0.05, 0, 0.4, 0)
+SendBtn.Text = "SAY (REPLICATED)"
+SendBtn.BackgroundColor3 = Color3.fromRGB(0, 120, 200)
+SendBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+Instance.new("UICorner", SendBtn)
+
+SendBtn.MouseButton1Click:Connect(function()
     if ChatInput.Text ~= "" then
-        CreateBubble(ChatInput.Text)
+        SayViaTool(ChatInput.Text)
         ChatInput.Text = ""
     end
 end)
 
-CreateButton("Speed: 100", UDim2.new(0.05, 0, 0.45, 0), Color3.fromRGB(80, 80, 80), function()
-    if Player.Character then Player.Character.Humanoid.WalkSpeed = 100 end
-end)
-
-CreateButton("Reset Speed (16)", UDim2.new(0.05, 0, 0.56, 0), Color3.fromRGB(40, 40, 40), function()
-    if Player.Character then Player.Character.Humanoid.WalkSpeed = 16 end
-end)
-
-CreateButton("Inf Jump: OFF", UDim2.new(0.05, 0, 0.67, 0), Color3.fromRGB(0, 120, 200), function(btn)
-    _G.InfJump = not _G.InfJump
-    btn.Text = _G.InfJump and "Inf Jump: ON" or "Inf Jump: OFF"
-    btn.BackgroundColor3 = _G.InfJump and Color3.fromRGB(0, 200, 100) or Color3.fromRGB(0, 120, 200)
-end)
-
-CreateButton("ESP: OFF", UDim2.new(0.05, 0, 0.78, 0), Color3.fromRGB(0, 120, 200), function(btn)
-    -- ESP Logic here (from previous version)
-end)
-
-CreateButton("Close Hub", UDim2.new(0.05, 0, 0.9, 0), Color3.fromRGB(150, 0, 0), function()
-    _G.HubStop = true
-    _G.Flying = false
-    _G.InfJump = false
-    ScreenGui:Destroy()
-end)
-
--- Inf Jump Activation
-UserInputService.JumpRequest:Connect(function()
-    if _G.InfJump and not _G.HubStop then
-        Player.Character:FindFirstChildOfClass("Humanoid"):ChangeState("Jumping")
-    end
-end)
+-- CLOSE BUTTON
+local CloseBtn = Instance.new("TextButton", Main)
+CloseBtn.Size = UDim2.new(0.9, 0, 0, 30)
+CloseBtn.Position = UDim2.new(0.05, 0, 0.85, 0)
+CloseBtn.Text = "Close Hub"
+CloseBtn.BackgroundColor3 = Color3.fromRGB(150, 0, 0)
+CloseBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+Instance.new("UICorner", CloseBtn)
+CloseBtn.MouseButton1Click:Connect(function() ScreenGui:Destroy() end)
