@@ -1,6 +1,6 @@
 -- admin-hub-V1
--- Universal Admin Hub (Noclip Restored + R6 + Dummy + F3X)
--- Compatibility: Xeno Executor
+-- VERSION: 1.5 (Noclip + R6 + Dummy + F3X)
+-- Compatibility: Xeno
 
 -- [1] CLEANUP
 if _G.HubRunning then 
@@ -16,7 +16,7 @@ local Player = game.Players.LocalPlayer
 local UIS = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
 
--- [2] UTILITY FUNCTIONS
+-- [2] FUNCTIONS
 local function GiveF3X()
     local f3x = game:GetObjects("rbxassetid://142785488")[1]
     if f3x then f3x.Parent = Player.Backpack end
@@ -30,21 +30,12 @@ local function SummonDummy()
     end
 end
 
-local function ForceR6()
-    local char = Player.Character
-    if char and char:FindFirstChild("Humanoid") then
-        local description = game:GetService("Players"):GetHumanoidDescriptionFromUserId(Player.UserId)
-        Player:LoadCharacterWithHumanoidDescription(description)
-    end
-end
-
--- [3] UI CONSTRUCTION
+-- [3] UI (NOCLIP INTEGRATED)
 local ScreenGui = Instance.new("ScreenGui")
 pcall(function() ScreenGui.Parent = game:GetService("CoreGui") end)
 if not ScreenGui.Parent then ScreenGui.Parent = Player.PlayerGui end
 ScreenGui.Name = "AdminHubV1"
 
--- THE DRAG HANDLE (ONLY part that moves the GUI)
 local DragFrame = Instance.new("Frame", ScreenGui)
 DragFrame.Size = UDim2.new(0, 240, 0, 40)
 DragFrame.Position = UDim2.new(0.5, -120, 0.3, 0)
@@ -54,13 +45,11 @@ DragFrame.Draggable = true
 Instance.new("UICorner", DragFrame)
 
 local Title = Instance.new("TextLabel", DragFrame)
-Title.Size = UDim2.new(1, 0, 1, 0); Title.Text = "ADMIN HUB V1 (DRAG)"; Title.TextColor3 = Color3.new(1,1,1)
+Title.Size = UDim2.new(1, 0, 1, 0); Title.Text = "HUB V1.5 - NOCLIP FIXED"; Title.TextColor3 = Color3.new(1,1,1)
 Title.BackgroundTransparency = 1; Title.Font = Enum.Font.GothamBold
 
--- THE CONTENT BODY
 local Main = Instance.new("Frame", DragFrame)
-Main.Size = UDim2.new(1, 0, 0, 400)
-Main.Position = UDim2.new(0, 0, 1, 5)
+Main.Size = UDim2.new(1, 0, 0, 400); Main.Position = UDim2.new(0, 0, 1, 5)
 Main.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
 Instance.new("UICorner", Main)
 
@@ -77,14 +66,12 @@ local function NewBtn(text, color)
     Instance.new("UICorner", b); return b
 end
 
--- --- BUTTONS ---
+-- --- CONTENT ---
 NewBtn("GET F3X BTOOLS", Color3.fromRGB(50, 50, 200)).MouseButton1Click:Connect(GiveF3X)
 NewBtn("SUMMON DUMMY", Color3.fromRGB(150, 150, 0)).MouseButton1Click:Connect(SummonDummy)
-NewBtn("CONVERT TO R6", Color3.fromRGB(100, 100, 100)).MouseButton1Click:Connect(ForceR6)
 
--- --- BUBBLE CHAT ---
 local ChatInput = Instance.new("TextBox", Scroll)
-ChatInput.Size = UDim2.new(0.9, 0, 0, 35); ChatInput.PlaceholderText = "Bubble Message..."; ChatInput.BackgroundColor3 = Color3.fromRGB(45, 45, 45); ChatInput.TextColor3 = Color3.new(1,1,1)
+ChatInput.Size = UDim2.new(0.9, 0, 0, 35); ChatInput.PlaceholderText = "Bubble Msg (Mute Bypass)"; ChatInput.BackgroundColor3 = Color3.fromRGB(45, 45, 45); ChatInput.TextColor3 = Color3.new(1,1,1)
 Instance.new("UICorner", ChatInput)
 
 NewBtn("SEND BUBBLE", Color3.fromRGB(120, 0, 200)).MouseButton1Click:Connect(function()
@@ -96,11 +83,10 @@ NewBtn("SEND BUBBLE", Color3.fromRGB(120, 0, 200)).MouseButton1Click:Connect(fun
     end
 end)
 
--- --- FLY + NOCLIP ---
-local FlyBtn = NewBtn("FLY & NOCLIP: OFF", Color3.fromRGB(60, 60, 60))
+local FlyBtn = NewBtn("FLY/NOCLIP: OFF", Color3.fromRGB(60, 60, 60))
 FlyBtn.MouseButton1Click:Connect(function()
     _G.Flying = not _G.Flying
-    FlyBtn.Text = _G.Flying and "FLY & NOCLIP: ON" or "FLY & NOCLIP: OFF"
+    FlyBtn.Text = _G.Flying and "FLY/NOCLIP: ON" or "FLY/NOCLIP: OFF"
     FlyBtn.BackgroundColor3 = _G.Flying and Color3.fromRGB(0, 200, 100) or Color3.fromRGB(60, 60, 60)
     
     if _G.Flying then
@@ -108,7 +94,6 @@ FlyBtn.MouseButton1Click:Connect(function()
             local Root = Player.Character:WaitForChild("HumanoidRootPart")
             local BV = Instance.new("BodyVelocity", Root); BV.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
             local BG = Instance.new("BodyGyro", Root); BG.MaxTorque = Vector3.new(math.huge, math.huge, math.huge)
-            
             while _G.Flying and not _G.HubStop do
                 BG.CFrame = workspace.CurrentCamera.CFrame
                 local moveDir = Vector3.new(0,0,0)
@@ -117,10 +102,9 @@ FlyBtn.MouseButton1Click:Connect(function()
                 if UIS:IsKeyDown(Enum.KeyCode.A) then moveDir = moveDir - workspace.CurrentCamera.CFrame.RightVector end
                 if UIS:IsKeyDown(Enum.KeyCode.D) then moveDir = moveDir + workspace.CurrentCamera.CFrame.RightVector end
                 BV.Velocity = (moveDir.Magnitude > 0) and (moveDir.Unit * 70) or Vector3.new(0,0,0)
-                
-                -- The Noclip Logic:
-                for _, part in pairs(Player.Character:GetDescendants()) do
-                    if part:IsA("BasePart") then part.CanCollide = false end
+                -- NOCLIP LOGIC
+                for _, v in pairs(Player.Character:GetDescendants()) do
+                    if v:IsA("BasePart") then v.CanCollide = false end
                 end
                 RunService.Stepped:Wait()
             end
@@ -129,4 +113,4 @@ FlyBtn.MouseButton1Click:Connect(function()
     end
 end)
 
-NewBtn("Close Hub", Color3.fromRGB(150, 0, 0)).MouseButton1Click:Connect(function() _G.HubStop = true; _G.Flying = false; ScreenGui:Destroy() end)
+NewBtn("CLOSE HUB", Color3.fromRGB(150, 0, 0)).MouseButton1Click:Connect(function() _G.HubStop = true; _G.Flying = false; ScreenGui:Destroy() end)
