@@ -1,6 +1,6 @@
 -- admin-hub-V1
--- VERSION: 1.6 (ONLY FOR THIS ROBLOX GAME "THE DOOR")
--- Features: Event Summoner, Force Close, Noclip Fixed, F3X, Dummy
+-- VERSION: 1.9.1 (Hardcoded Dummy Fix)
+-- Universal + "The Door" Specialized Logic
 
 -- [1] CLEANUP
 if _G.HubRunning then 
@@ -16,34 +16,48 @@ local Player = game.Players.LocalPlayer
 local UIS = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
 
--- [2] "THE DOOR" SPECIFIC LOGIC
-local function SummonEvent(eventName)
-    -- This attempts to fire server events if the game has them exposed in ReplicatedStorage
-    local events = game:GetService("ReplicatedStorage"):FindFirstChild("Events") or game:GetService("ReplicatedStorage")
-    local target = events:FindFirstChild(eventName)
-    if target and target:IsA("RemoteEvent") then
-        target:FireServer()
-    elseif target and target:IsA("BindableEvent") then
-        target:Fire()
+-- [2] NEW DUMMY LOGIC (NO ASSET ID NEEDED)
+local function BuildManualDummy()
+    local Dummy = Instance.new("Model", workspace)
+    Dummy.Name = "HubDummy"
+    
+    local function NewPart(name, size, pos)
+        local p = Instance.new("Part", Dummy)
+        p.Name = name; p.Size = size; p.Position = pos
+        p.BottomSurface = 0; p.TopSurface = 0
+        return p
     end
+
+    local rootPos = Player.Character.HumanoidRootPart.Position + (Player.Character.HumanoidRootPart.CFrame.LookVector * 6)
+    local head = NewPart("Head", Vector3.new(2,1,1), rootPos + Vector3.new(0,1.5,0))
+    local torso = NewPart("Torso", Vector3.new(2,2,1), rootPos)
+    local hum = Instance.new("Humanoid", Dummy)
+    
+    -- Basic R6 appearance
+    head.Color = Color3.new(1, 1, 0)
+    torso.Color = Color3.new(0, 0, 1)
+    
+    Dummy:MoveTo(rootPos)
 end
 
-local function ForceCloseDoor()
-    -- Searches for the main Door object and forces it closed/locked
-    for _, v in pairs(workspace:GetDescendants()) do
-        if v.Name:lower():find("door") and v:IsA("BasePart") then
-            v.CanCollide = true
-            v.Transparency = 0
-            -- If the door has a 'Close' event or animation, we trigger it here
-            local closeTrigger = v:FindFirstChild("Close") or v:FindFirstChild("Trigger")
-            if closeTrigger and closeTrigger:IsA("RemoteEvent") then
-                closeTrigger:FireServer()
+-- [3] TOOL & EVENT LOGIC
+local function SecureGive(id)
+    local success, objects = pcall(function() return game:GetObjects("rbxassetid://" .. id) end)
+    if success and objects[1] then
+        local tool = objects[1]
+        tool.Parent = Player.Backpack
+        for _, v in pairs(tool:GetDescendants()) do
+            if v:IsA("LocalScript") or v:IsA("Script") then
+                v.Disabled = false
+                local clone = v:Clone()
+                clone.Parent = v.Parent
+                v:Destroy()
             end
         end
     end
 end
 
--- [3] UI CONSTRUCTION (DRAG HANDLE FIXED)
+-- [4] UI CONSTRUCTION
 local ScreenGui = Instance.new("ScreenGui")
 pcall(function() ScreenGui.Parent = game:GetService("CoreGui") end)
 if not ScreenGui.Parent then ScreenGui.Parent = Player.PlayerGui end
@@ -52,14 +66,13 @@ ScreenGui.Name = "AdminHubV1"
 local DragFrame = Instance.new("Frame", ScreenGui)
 DragFrame.Size = UDim2.new(0, 250, 0, 40)
 DragFrame.Position = UDim2.new(0.5, -125, 0.2, 0)
-DragFrame.BackgroundColor3 = Color3.fromRGB(45, 0, 0) -- Dark red for "The Door"
-DragFrame.Active = true
-DragFrame.Draggable = true 
+DragFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+DragFrame.Active = true; DragFrame.Draggable = true 
 Instance.new("UICorner", DragFrame)
 
 local Title = Instance.new("TextLabel", DragFrame)
-Title.Size = UDim2.new(1, 0, 1, 0); Title.Text = "HUB V1.6 - THE DOOR ONLY"; Title.TextColor3 = Color3.new(1,1,1)
-Title.BackgroundTransparency = 1; Title.Font = Enum.Font.GothamBold; Title.TextSize = 12
+Title.Size = UDim2.new(1, 0, 1, 0); Title.Text = "MASTER HUB V1.9.1 (DUMMY FIX)"; Title.TextColor3 = Color3.new(1,1,1)
+Title.BackgroundTransparency = 1; Title.Font = Enum.Font.GothamBold
 
 local Main = Instance.new("Frame", DragFrame)
 Main.Size = UDim2.new(1, 0, 0, 420); Main.Position = UDim2.new(0, 0, 1, 5)
@@ -68,7 +81,7 @@ Instance.new("UICorner", Main)
 
 local Scroll = Instance.new("ScrollingFrame", Main)
 Scroll.Size = UDim2.new(1, -10, 1, -10); Scroll.Position = UDim2.new(0, 5, 0, 5)
-Scroll.BackgroundTransparency = 1; Scroll.CanvasSize = UDim2.new(0, 0, 3, 0); Scroll.ScrollBarThickness = 2
+Scroll.BackgroundTransparency = 1; Scroll.CanvasSize = UDim2.new(0, 0, 4, 0); Scroll.ScrollBarThickness = 2
 
 local UIList = Instance.new("UIListLayout", Scroll)
 UIList.Padding = UDim.new(0, 8); UIList.HorizontalAlignment = Enum.HorizontalAlignment.Center
@@ -79,34 +92,25 @@ local function NewBtn(text, color)
     Instance.new("UICorner", b); return b
 end
 
--- --- THE DOOR SPECIALS ---
-NewBtn("FORCE CLOSE DOOR", Color3.fromRGB(150, 0, 0)).MouseButton1Click:Connect(ForceCloseDoor)
+-- --- GEARS & DUMMY ---
+NewBtn("SUMMON DUMMY (MANUAL)", Color3.fromRGB(150, 150, 0)).MouseButton1Click:Connect(BuildManualDummy)
+NewBtn("GET F3X BTOOLS", Color3.fromRGB(50, 50, 180)).MouseButton1Click:Connect(function() SecureGive("142785488") end)
 
-local EventInput = Instance.new("TextBox", Scroll)
-EventInput.Size = UDim2.new(0.9, 0, 0, 35); EventInput.PlaceholderText = "Event Name (e.g. Monster)"; EventInput.BackgroundColor3 = Color3.fromRGB(45, 45, 45); EventInput.TextColor3 = Color3.new(1,1,1)
-Instance.new("UICorner", EventInput)
-
-NewBtn("SUMMON EVENT", Color3.fromRGB(200, 100, 0)).MouseButton1Click:Connect(function() SummonEvent(EventInput.Text) end)
-
--- --- UTILS ---
-NewBtn("GET F3X BTOOLS", Color3.fromRGB(50, 50, 200)).MouseButton1Click:Connect(function()
-    local f3x = game:GetObjects("rbxassetid://142785488")[1]
-    if f3x then f3x.Parent = Player.Backpack end
+-- --- "THE DOOR" FEATURES ---
+NewBtn("FORCE CLOSE DOORS", Color3.fromRGB(150, 0, 0)).MouseButton1Click:Connect(function()
+    for _, v in pairs(workspace:GetDescendants()) do
+        if v.Name:lower():find("door") and v:IsA("BasePart") then v.CanCollide = true; v.Transparency = 0 end
+    end
 end)
 
-NewBtn("SUMMON DUMMY", Color3.fromRGB(150, 150, 0)).MouseButton1Click:Connect(function()
-    local d = game:GetObjects("rbxassetid://5630733321")[1]
-    if d then d.Parent = workspace; d:MoveTo(Player.Character.HumanoidRootPart.Position + Vector3.new(0,0,5)) end
-end)
-
--- --- BUBBLE CHAT (FOR 1-DAY SUSPENSION) ---
+-- --- BUBBLE CHAT (MUTE BYPASS) ---
 local ChatInput = Instance.new("TextBox", Scroll)
-ChatInput.Size = UDim2.new(0.9, 0, 0, 35); ChatInput.PlaceholderText = "Bubble Msg..."; ChatInput.BackgroundColor3 = Color3.fromRGB(45, 45, 45); ChatInput.TextColor3 = Color3.new(1,1,1)
+ChatInput.Size = UDim2.new(0.9, 0, 0, 35); ChatInput.PlaceholderText = "Mute Bypass Msg..."; ChatInput.BackgroundColor3 = Color3.fromRGB(45, 45, 45); ChatInput.TextColor3 = Color3.new(1,1,1)
 Instance.new("UICorner", ChatInput)
 
-NewBtn("SEND BUBBLE", Color3.fromRGB(120, 0, 200)).MouseButton1Click:Connect(function()
+NewBtn("SEND BUBBLE", Color3.fromRGB(120, 0, 180)).MouseButton1Click:Connect(function()
     if ChatInput.Text ~= "" and Player.Character:FindFirstChild("Head") then
-        local b = Instance.new("BillboardGui", Player.Character.Head); b.Size = UDim2.new(0, 200, 0, 50); b.ExtentsOffset = Vector3.new(0, 3, 0)
+        local b = Instance.new("BillboardGui", Player.Character.Head); b.Size = UDim2.new(0, 250, 0, 50); b.ExtentsOffset = Vector3.new(0, 3, 0)
         local f = Instance.new("Frame", b); f.Size = UDim2.new(1,0,1,0); f.BackgroundColor3 = Color3.new(1,1,1); Instance.new("UICorner", f)
         local l = Instance.new("TextLabel", f); l.Size = UDim2.new(1,0,1,0); l.Text = ChatInput.Text; l.TextScaled = true; l.BackgroundTransparency = 1
         task.delay(5, function() b:Destroy() end); ChatInput.Text = ""
@@ -114,11 +118,11 @@ NewBtn("SEND BUBBLE", Color3.fromRGB(120, 0, 200)).MouseButton1Click:Connect(fun
 end)
 
 -- --- FLY/NOCLIP ---
-local FlyBtn = NewBtn("FLY/NOCLIP: OFF", Color3.fromRGB(60, 60, 60))
+local FlyBtn = NewBtn("FLY/NOCLIP: OFF", Color3.fromRGB(50, 50, 50))
 FlyBtn.MouseButton1Click:Connect(function()
     _G.Flying = not _G.Flying
     FlyBtn.Text = _G.Flying and "FLY/NOCLIP: ON" or "FLY/NOCLIP: OFF"
-    FlyBtn.BackgroundColor3 = _G.Flying and Color3.fromRGB(0, 200, 100) or Color3.fromRGB(60, 60, 60)
+    FlyBtn.BackgroundColor3 = _G.Flying and Color3.fromRGB(0, 200, 100) or Color3.fromRGB(50, 50, 50)
     if _G.Flying then
         task.spawn(function()
             local Root = Player.Character:WaitForChild("HumanoidRootPart")
@@ -131,7 +135,7 @@ FlyBtn.MouseButton1Click:Connect(function()
                 if UIS:IsKeyDown(Enum.KeyCode.S) then moveDir = moveDir - workspace.CurrentCamera.CFrame.LookVector end
                 if UIS:IsKeyDown(Enum.KeyCode.A) then moveDir = moveDir - workspace.CurrentCamera.CFrame.RightVector end
                 if UIS:IsKeyDown(Enum.KeyCode.D) then moveDir = moveDir + workspace.CurrentCamera.CFrame.RightVector end
-                BV.Velocity = (moveDir.Magnitude > 0) and (moveDir.Unit * 70) or Vector3.new(0,0,0)
+                BV.Velocity = (moveDir.Magnitude > 0) and (moveDir.Unit * 75) or Vector3.new(0,0,0)
                 for _, v in pairs(Player.Character:GetDescendants()) do if v:IsA("BasePart") then v.CanCollide = false end end
                 RunService.Stepped:Wait()
             end
