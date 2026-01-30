@@ -1,6 +1,6 @@
 -- Admin-Hub-V1: Forced Update Launcher
 local target = "https://raw.githubusercontent.com/yahyahisham-gith/noname/main/admin-hub-V1"
-local cacheBuster = "?update=" .. tick() .. "&ver=2.0.0"
+local cacheBuster = "?update=" .. tick() .. "&ver=2.0.2"
 
 local code = game:HttpGet(target .. cacheBuster)
 
