@@ -1,6 +1,5 @@
 -- admin-hub-V1
--- VERSION: 1.9.9 (All Features + Tap-to-Close Door Fix)
--- Universal + "The Door" Specialized Logic
+-- VERSION: 2.0.0 (R6 Mode + Gear Function Fix)
 
 -- [1] CLEANUP
 if _G.HubRunning then 
@@ -12,43 +11,40 @@ end
 _G.HubRunning, _G.HubStop = true, false
 
 local Player = game.Players.LocalPlayer
+local Character = Player.Character or Player.CharacterAdded:Wait()
 local UIS, RunService = game:GetService("UserInputService"), game:GetService("RunService")
 
--- [2] CORE FUNCTIONS
-local function SecureGive(id)
+-- [2] R6 CONVERSION
+local function ConvertToR6()
+    local Hum = Character:FindFirstChildOfClass("Humanoid")
+    if Hum then
+        -- This forces the character to behave with R6 logic in R15 games
+        Hum.RigType = Enum.HumanoidRigType.R6
+        print("Switched to R6 Rig Logic")
+    end
+end
+
+-- [3] GEAR FIX (RETAIN FUNCTIONS)
+local function SecureGear(id)
     local success, objects = pcall(function() return game:GetObjects("rbxassetid://" .. id) end)
     if success and objects[1] then
         local tool = objects[1]
-        tool.Parent = Player.Backpack
+        -- Attempting to bypass script deletion
+        local scriptFolder = Instance.new("Folder", tool)
+        scriptFolder.Name = "FunctionStorage"
+        
         for _, v in pairs(tool:GetDescendants()) do
-            if v:IsA("LocalScript") or v:IsA("Script") then
+            if v:IsA("LuaSourceContainer") then
                 v.Disabled = false
-                local clone = v:Clone(); clone.Parent = v.Parent; v:Destroy()
+                v.Parent = scriptFolder -- Hide scripts from immediate deletion
             end
         end
+        tool.Parent = Player.Backpack
+        print("Gear Given. Check FunctionStorage if scripts fail.")
     end
 end
 
-local function SmartForceClose()
-    for _, v in pairs(workspace:GetDescendants()) do
-        if v.Name:lower():find("door") or v.Name:lower():find("gate") then
-            -- Bypass "Wait Bar" by firing the trigger directly
-            local trigger = v:FindFirstChildWhichIsA("ClickDetector", true) or v:FindFirstChildWhichIsA("TouchTransmitter", true)
-            if trigger then
-                if trigger:IsA("ClickDetector") then
-                    fireclickdetector(trigger)
-                elseif trigger:IsA("TouchTransmitter") then
-                    firetouchinterest(Player.Character.HumanoidRootPart, v, 0)
-                    firetouchinterest(Player.Character.HumanoidRootPart, v, 1)
-                end
-            end
-            -- Force physical properties
-            if v:IsA("BasePart") then v.CanCollide = true; v.Transparency = 0 end
-        end
-    end
-end
-
--- [3] UI CONSTRUCTION
+-- [4] UI CONSTRUCTION
 local ScreenGui = Instance.new("ScreenGui")
 pcall(function() ScreenGui.Parent = game:GetService("CoreGui") end)
 if not ScreenGui.Parent then ScreenGui.Parent = Player.PlayerGui end
@@ -60,7 +56,7 @@ DragFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30); DragFrame.Active = true
 Instance.new("UICorner", DragFrame)
 
 local Title = Instance.new("TextLabel", DragFrame)
-Title.Size = UDim2.new(1, 0, 1, 0); Title.Text = "MASTER HUB V1.9.9"; Title.TextColor3 = Color3.new(1,1,1)
+Title.Size = UDim2.new(1, 0, 1, 0); Title.Text = "MASTER HUB V2.0.0"; Title.TextColor3 = Color3.new(1,1,1)
 Title.BackgroundTransparency = 1; Title.Font = Enum.Font.GothamBold
 
 local Main = Instance.new("Frame", DragFrame)
@@ -69,7 +65,7 @@ Main.BackgroundColor3 = Color3.fromRGB(20, 20, 20); Instance.new("UICorner", Mai
 
 local Scroll = Instance.new("ScrollingFrame", Main)
 Scroll.Size = UDim2.new(1, -10, 1, -10); Scroll.Position = UDim2.new(0, 5, 0, 5)
-Scroll.BackgroundTransparency = 1; Scroll.CanvasSize = UDim2.new(0, 0, 9, 0); Scroll.ScrollBarThickness = 2
+Scroll.BackgroundTransparency = 1; Scroll.CanvasSize = UDim2.new(0, 0, 10, 0); Scroll.ScrollBarThickness = 2
 local UIList = Instance.new("UIListLayout", Scroll); UIList.Padding = UDim.new(0, 8); UIList.HorizontalAlignment = Enum.HorizontalAlignment.Center
 
 local function NewBtn(text, color)
@@ -78,7 +74,10 @@ local function NewBtn(text, color)
     Instance.new("UICorner", b); return b
 end
 
--- --- SPECIALS ---
+-- --- CHARACTER OPTIONS ---
+NewBtn("FORCE R6 MODE", Color3.fromRGB(80, 80, 150)).MouseButton1Click:Connect(ConvertToR6)
+
+-- --- THE DOOR / DESERT ---
 NewBtn("SUMMON DESERT CACTUS", Color3.fromRGB(45, 120, 45)).MouseButton1Click:Connect(function()
     for _, v in pairs(game:GetDescendants()) do
         if v:IsA("Model") and v.Name:lower():find("cactus") then
@@ -89,12 +88,18 @@ NewBtn("SUMMON DESERT CACTUS", Color3.fromRGB(45, 120, 45)).MouseButton1Click:Co
     end
 end)
 
-NewBtn("FORCE CLOSE DOORS (FIXED)", Color3.fromRGB(180, 0, 0)).MouseButton1Click:Connect(SmartForceClose)
+NewBtn("FORCE CLOSE DOORS", Color3.fromRGB(180, 0, 0)).MouseButton1Click:Connect(function()
+    for _, v in pairs(workspace:GetDescendants()) do
+        if v.Name:lower():find("door") or v.Name:lower():find("gate") then
+            v.CanCollide = true; v.Transparency = 0
+        end
+    end
+end)
 
--- --- GEARS (RESTORED) ---
+-- --- GEARS ---
 local CatIn = Instance.new("TextBox", Scroll)
 CatIn.Size = UDim2.new(0.9, 0, 0, 35); CatIn.PlaceholderText = "Catalog Gear ID..."; CatIn.BackgroundColor3 = Color3.fromRGB(45, 45, 45); CatIn.TextColor3 = Color3.new(1,1,1); Instance.new("UICorner", CatIn)
-NewBtn("GET CATALOG GEAR", Color3.fromRGB(0, 120, 0)).MouseButton1Click:Connect(function() SecureGive(CatIn.Text) end)
+NewBtn("GET CATALOG GEAR (RETAIN FN)", Color3.fromRGB(0, 120, 0)).MouseButton1Click:Connect(function() SecureGear(CatIn.Text) end)
 
 local GameIn = Instance.new("TextBox", Scroll)
 GameIn.Size = UDim2.new(0.9, 0, 0, 35); GameIn.PlaceholderText = "Game Tool Name..."; GameIn.BackgroundColor3 = Color3.fromRGB(45, 45, 45); GameIn.TextColor3 = Color3.new(1,1,1); Instance.new("UICorner", GameIn)
@@ -104,14 +109,12 @@ NewBtn("GET GAME GEAR", Color3.fromRGB(0, 80, 180)).MouseButton1Click:Connect(fu
     end
 end)
 
-NewBtn("GET F3X BTOOLS", Color3.fromRGB(50, 50, 180)).MouseButton1Click:Connect(function() SecureGive("142785488") end)
-
 -- --- BUBBLE CHAT (MUTE BYPASS) ---
 local BubbleIn = Instance.new("TextBox", Scroll)
 BubbleIn.Size = UDim2.new(0.9, 0, 0, 35); BubbleIn.PlaceholderText = "Mute Bypass Msg..."; BubbleIn.BackgroundColor3 = Color3.fromRGB(45, 45, 45); BubbleIn.TextColor3 = Color3.new(1,1,1); Instance.new("UICorner", BubbleIn)
 NewBtn("SEND BUBBLE", Color3.fromRGB(120, 0, 180)).MouseButton1Click:Connect(function()
-    if BubbleIn.Text ~= "" and Player.Character:FindFirstChild("Head") then
-        local b = Instance.new("BillboardGui", Player.Character.Head); b.Size = UDim2.new(0, 250, 0, 50); b.ExtentsOffset = Vector3.new(0, 3, 0)
+    if BubbleIn.Text ~= "" and Character:FindFirstChild("Head") then
+        local b = Instance.new("BillboardGui", Character.Head); b.Size = UDim2.new(0, 250, 0, 50); b.ExtentsOffset = Vector3.new(0, 3, 0)
         local f = Instance.new("Frame", b); f.Size = UDim2.new(1,0,1,0); f.BackgroundColor3 = Color3.new(1,1,1); Instance.new("UICorner", f)
         local l = Instance.new("TextLabel", f); l.Size = UDim2.new(1,0,1,0); l.Text = BubbleIn.Text; l.TextScaled = true; l.BackgroundTransparency = 1
         task.delay(5, function() b:Destroy() end); BubbleIn.Text = ""
@@ -119,7 +122,6 @@ NewBtn("SEND BUBBLE", Color3.fromRGB(120, 0, 180)).MouseButton1Click:Connect(fun
 end)
 
 -- --- HUB CONTROLS ---
-NewBtn("CLOSE HUB (HIDE)", Color3.fromRGB(60, 60, 60)).MouseButton1Click:Connect(function() ScreenGui.Enabled = false end)
 NewBtn("FORCE CLOSE HUB (KILL)", Color3.fromRGB(170, 0, 0)).MouseButton1Click:Connect(function()
     _G.HubStop, _G.HubRunning = true, false; ScreenGui:Destroy()
 end)
