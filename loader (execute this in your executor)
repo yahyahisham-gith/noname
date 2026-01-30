@@ -1,19 +1,27 @@
--- Admin-Hub-V1: Dynamic Version Loader
--- Targets: Latest GitHub Commit (V1.9.2+)
+-- NUCLEAR CACHE FLUSH LOADER
+-- Target: Master Hub V1.9.2
+-- Purpose: Bypass Executor/Client-side memory caching
 
-local HttpService = game:GetService("HttpService")
-local GitHubRaw = "https://raw.githubusercontent.com/yahyahisham-gith/noname/main/admin-hub-V1"
+-- [1] CLEAR LOCAL MEMORY
+if _G.HubRunning then _G.HubStop = true end
+_G.AdminHubData = nil 
 
--- Generates a unique string to force GitHub to bypass cache
-local cacheBuster = "?v=" .. HttpService:GenerateGUID(false) .. "&t=" .. tick() .. "&r=" .. math.random(1, 100000)
+-- [2] FORCE FRESH HTTP STREAM
+local function GetLatestCode()
+    local url = "https://raw.githubusercontent.com/yahyahisham-gith/noname/main/admin-hub-V1"
+    -- Unique headers and randomized params force the EXECUTOR to re-fetch
+    local response = game:HttpGet(url .. "?nocache=" .. tick() .. "&rand=" .. math.random(1, 100000))
+    return response
+end
 
-local success, result = pcall(function()
-    return game:HttpGet(GitHubRaw .. cacheBuster)
-end)
+-- [3] EXECUTION WITH PROTECTION
+local success, code = pcall(GetLatestCode)
 
-if success then
-    print("Admin Hub: Successfully fetched latest version.")
-    loadstring(result)()
+if success and code then
+    -- Clearing any old function references before loading
+    local func = loadstring(code)
+    code = nil -- Clear the string from memory immediately
+    func()
 else
-    warn("Admin Hub: Failed to fetch update. Check connection.")
+    warn("Failed to bypass executor cache. Try restarting Xeno.")
 end
