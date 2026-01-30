@@ -1,27 +1,14 @@
--- NUCLEAR CACHE FLUSH LOADER
--- Target: Master Hub V1.9.2
--- Purpose: Bypass Executor/Client-side memory caching
+-- Direct-Stream Version Loader
+-- Bypasses local and executor cache to pull EXACTLY what's on GitHub
 
--- [1] CLEAR LOCAL MEMORY
-if _G.HubRunning then _G.HubStop = true end
-_G.AdminHubData = nil 
+local github_url = "https://raw.githubusercontent.com/yahyahisham-gith/noname/main/admin-hub-V1"
+local cache_buster = "?v=" .. tick() -- Forces fresh download
 
--- [2] FORCE FRESH HTTP STREAM
-local function GetLatestCode()
-    local url = "https://raw.githubusercontent.com/yahyahisham-gith/noname/main/admin-hub-V1"
-    -- Unique headers and randomized params force the EXECUTOR to re-fetch
-    local response = game:HttpGet(url .. "?nocache=" .. tick() .. "&rand=" .. math.random(1, 100000))
-    return response
-end
+local code = game:HttpGet(github_url .. cache_buster)
 
--- [3] EXECUTION WITH PROTECTION
-local success, code = pcall(GetLatestCode)
-
-if success and code then
-    -- Clearing any old function references before loading
-    local func = loadstring(code)
-    code = nil -- Clear the string from memory immediately
-    func()
+if code then
+    print("Admin Hub: Pulled latest commit successfully.")
+    loadstring(code)()
 else
-    warn("Failed to bypass executor cache. Try restarting Xeno.")
+    warn("Admin Hub: Failed to pull from GitHub.")
 end
