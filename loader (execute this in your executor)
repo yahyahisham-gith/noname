@@ -1,14 +1,26 @@
--- Direct-Stream Version Loader
--- Bypasses local and executor cache to pull EXACTLY what's on GitHub
+-- ADMIN-HUB-V1: NUCLEAR LAUNCHER V3
+-- Purpose: Force-bypass Executor/Client Cache to load V1.9.7+
 
-local github_url = "https://raw.githubusercontent.com/yahyahisham-gith/noname/main/admin-hub-V1"
-local cache_buster = "?v=" .. tick() -- Forces fresh download
+local GitHubURL = "https://raw.githubusercontent.com/yahyahisham-gith/noname/main/admin-hub-V1"
+local HttpService = game:GetService("HttpService")
 
-local code = game:HttpGet(github_url .. cache_buster)
+-- [1] TRIPLE CACHE BUSTER
+-- Using GUID + Tick + Random ensures the Executor sees a "New" URL every time
+local cacheBuster = "?v=" .. HttpService:GenerateGUID(false) 
+    .. "&t=" .. tick() 
+    .. "&refresh=" .. math.random(1, 100000)
 
-if code then
-    print("Admin Hub: Pulled latest commit successfully.")
-    loadstring(code)()
+-- [2] PURE STREAM FETCH
+local success, result = pcall(function()
+    return game:HttpGet(GitHubURL .. cacheBuster)
+end)
+
+-- [3] EXECUTION & MEMORY FLUSH
+if success and result then
+    print("Admin Hub: Latest version fetched. Purging local cache...")
+    local func = loadstring(result)
+    result = nil -- Immediately clear the string from memory
+    func()
 else
-    warn("Admin Hub: Failed to pull from GitHub.")
+    warn("Launcher Error: Could not connect to GitHub. Check your URL.")
 end
