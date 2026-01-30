@@ -1,22 +1,11 @@
--- Admin-Hub-V1: Hard-Reset Launcher (FORCING V1.9.9)
+-- Admin-Hub-V1: Forced Update Launcher
 local target = "https://raw.githubusercontent.com/yahyahisham-gith/noname/main/admin-hub-V1"
+local cacheBuster = "?update=" .. tick() .. "&ver=2.0.0"
 
--- Generate a unique session ID to bypass Xeno's internal cache
-local sessionID = game:GetService("HttpService"):GenerateGUID(false)
-local forceUpdate = "?nocache=" .. tick() .. "&session=" .. sessionID .. "&ver=1.9.9"
+local code = game:HttpGet(target .. cacheBuster)
 
-local success, code = pcall(function() 
-    return game:HttpGet(target .. forceUpdate) 
-end)
-
-if success and code then
-    -- Verify we didn't get the old version before running
-    if string.find(code, "VERSION: 1.9.9") then
-        print("Admin Hub: Successfully fetched V1.9.9 (The Everything Build)")
-        loadstring(code)()
-    else
-        warn("Admin Hub: Still receiving old version from cache. Try restarting Xeno.")
-    end
+if string.find(code, "VERSION: 2.0.0") then
+    loadstring(code)()
 else
-    warn("Admin Hub: GitHub Connection Failed.")
+    warn("Still pulling old cache! Restart Xeno.")
 end
