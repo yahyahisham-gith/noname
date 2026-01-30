@@ -1,8 +1,8 @@
 -- admin-hub-V1
--- VERSION: 1.9.1 (Hardcoded Dummy Fix)
--- Universal + "The Door" Specialized Logic
+-- VERSION: 1.9.2 (Universal + Specialized 'The Door' Logic)
+-- Compatibility: All Games (Xeno Executor)
 
--- [1] CLEANUP
+-- [1] CLEANUP & VARS
 if _G.HubRunning then 
     _G.HubStop = true 
     local old = game.CoreGui:FindFirstChild("AdminHubV1") or game.Players.LocalPlayer.PlayerGui:FindFirstChild("AdminHubV1")
@@ -16,31 +16,7 @@ local Player = game.Players.LocalPlayer
 local UIS = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
 
--- [2] NEW DUMMY LOGIC (NO ASSET ID NEEDED)
-local function BuildManualDummy()
-    local Dummy = Instance.new("Model", workspace)
-    Dummy.Name = "HubDummy"
-    
-    local function NewPart(name, size, pos)
-        local p = Instance.new("Part", Dummy)
-        p.Name = name; p.Size = size; p.Position = pos
-        p.BottomSurface = 0; p.TopSurface = 0
-        return p
-    end
-
-    local rootPos = Player.Character.HumanoidRootPart.Position + (Player.Character.HumanoidRootPart.CFrame.LookVector * 6)
-    local head = NewPart("Head", Vector3.new(2,1,1), rootPos + Vector3.new(0,1.5,0))
-    local torso = NewPart("Torso", Vector3.new(2,2,1), rootPos)
-    local hum = Instance.new("Humanoid", Dummy)
-    
-    -- Basic R6 appearance
-    head.Color = Color3.new(1, 1, 0)
-    torso.Color = Color3.new(0, 0, 1)
-    
-    Dummy:MoveTo(rootPos)
-end
-
--- [3] TOOL & EVENT LOGIC
+-- [2] UNIVERSAL FUNCTIONS
 local function SecureGive(id)
     local success, objects = pcall(function() return game:GetObjects("rbxassetid://" .. id) end)
     if success and objects[1] then
@@ -57,7 +33,17 @@ local function SecureGive(id)
     end
 end
 
--- [4] UI CONSTRUCTION
+local function BuildManualDummy()
+    local Dummy = Instance.new("Model", workspace)
+    Dummy.Name = "UniversalHubDummy"
+    local rootPos = Player.Character.HumanoidRootPart.Position + (Player.Character.HumanoidRootPart.CFrame.LookVector * 6)
+    local head = Instance.new("Part", Dummy); head.Name = "Head"; head.Size = Vector3.new(2,1,1); head.Position = rootPos + Vector3.new(0,1.5,0); head.Color = Color3.new(1,1,0)
+    local torso = Instance.new("Part", Dummy); torso.Name = "Torso"; torso.Size = Vector3.new(2,2,1); torso.Position = rootPos; torso.Color = Color3.new(0,0,1)
+    Instance.new("Humanoid", Dummy)
+    Dummy:MoveTo(rootPos)
+end
+
+-- [3] UI CONSTRUCTION
 local ScreenGui = Instance.new("ScreenGui")
 pcall(function() ScreenGui.Parent = game:GetService("CoreGui") end)
 if not ScreenGui.Parent then ScreenGui.Parent = Player.PlayerGui end
@@ -71,7 +57,7 @@ DragFrame.Active = true; DragFrame.Draggable = true
 Instance.new("UICorner", DragFrame)
 
 local Title = Instance.new("TextLabel", DragFrame)
-Title.Size = UDim2.new(1, 0, 1, 0); Title.Text = "MASTER HUB V1.9.1 (DUMMY FIX)"; Title.TextColor3 = Color3.new(1,1,1)
+Title.Size = UDim2.new(1, 0, 1, 0); Title.Text = "UNIVERSAL HUB V1.9.2"; Title.TextColor3 = Color3.new(1,1,1)
 Title.BackgroundTransparency = 1; Title.Font = Enum.Font.GothamBold
 
 local Main = Instance.new("Frame", DragFrame)
@@ -81,7 +67,7 @@ Instance.new("UICorner", Main)
 
 local Scroll = Instance.new("ScrollingFrame", Main)
 Scroll.Size = UDim2.new(1, -10, 1, -10); Scroll.Position = UDim2.new(0, 5, 0, 5)
-Scroll.BackgroundTransparency = 1; Scroll.CanvasSize = UDim2.new(0, 0, 4, 0); Scroll.ScrollBarThickness = 2
+Scroll.BackgroundTransparency = 1; Scroll.CanvasSize = UDim2.new(0, 0, 4.5, 0); Scroll.ScrollBarThickness = 2
 
 local UIList = Instance.new("UIListLayout", Scroll)
 UIList.Padding = UDim.new(0, 8); UIList.HorizontalAlignment = Enum.HorizontalAlignment.Center
@@ -92,20 +78,36 @@ local function NewBtn(text, color)
     Instance.new("UICorner", b); return b
 end
 
--- --- GEARS & DUMMY ---
-NewBtn("SUMMON DUMMY (MANUAL)", Color3.fromRGB(150, 150, 0)).MouseButton1Click:Connect(BuildManualDummy)
-NewBtn("GET F3X BTOOLS", Color3.fromRGB(50, 50, 180)).MouseButton1Click:Connect(function() SecureGive("142785488") end)
+-- --- SECTION: "THE DOOR" FEATURES (COMPATIBLE WITH ALL) ---
+local Header1 = Instance.new("TextLabel", Scroll)
+Header1.Size = UDim2.new(1,0,0,20); Header1.Text = "--- THE DOOR SPECIALS ---"; Header1.TextColor3 = Color3.new(1,0,0); Header1.BackgroundTransparency = 1
 
--- --- "THE DOOR" FEATURES ---
 NewBtn("FORCE CLOSE DOORS", Color3.fromRGB(150, 0, 0)).MouseButton1Click:Connect(function()
     for _, v in pairs(workspace:GetDescendants()) do
         if v.Name:lower():find("door") and v:IsA("BasePart") then v.CanCollide = true; v.Transparency = 0 end
     end
 end)
 
--- --- BUBBLE CHAT (MUTE BYPASS) ---
+local EvInput = Instance.new("TextBox", Scroll)
+EvInput.Size = UDim2.new(0.9, 0, 0, 35); EvInput.PlaceholderText = "Event Name (Monster/Spawn)..."; EvInput.BackgroundColor3 = Color3.fromRGB(45, 45, 45); EvInput.TextColor3 = Color3.new(1,1,1)
+Instance.new("UICorner", EvInput)
+
+NewBtn("SUMMON EVENT", Color3.fromRGB(200, 100, 0)).MouseButton1Click:Connect(function()
+    local events = game:GetService("ReplicatedStorage"):FindFirstChild("Events") or game:GetService("ReplicatedStorage")
+    local remote = events:FindFirstChild(EvInput.Text, true)
+    if remote and remote:IsA("RemoteEvent") then remote:FireServer() end
+end)
+
+-- --- SECTION: UNIVERSAL TOOLS ---
+local Header2 = Instance.new("TextLabel", Scroll)
+Header2.Size = UDim2.new(1,0,0,20); Header2.Text = "--- UNIVERSAL TOOLS ---"; Header2.TextColor3 = Color3.new(1,1,1); Header2.BackgroundTransparency = 1
+
+NewBtn("SUMMON DUMMY (MANUAL)", Color3.fromRGB(150, 150, 0)).MouseButton1Click:Connect(BuildManualDummy)
+NewBtn("GET F3X (FIXED)", Color3.fromRGB(50, 50, 180)).MouseButton1Click:Connect(function() SecureGive("142785488") end)
+
+-- --- SECTION: BUBBLE CHAT ---
 local ChatInput = Instance.new("TextBox", Scroll)
-ChatInput.Size = UDim2.new(0.9, 0, 0, 35); ChatInput.PlaceholderText = "Mute Bypass Msg..."; ChatInput.BackgroundColor3 = Color3.fromRGB(45, 45, 45); ChatInput.TextColor3 = Color3.new(1,1,1)
+ChatInput.Size = UDim2.new(0.9, 0, 0, 35); ChatInput.PlaceholderText = "Bubble Chat (Mute Bypass)..."; ChatInput.BackgroundColor3 = Color3.fromRGB(45, 45, 45); ChatInput.TextColor3 = Color3.new(1,1,1)
 Instance.new("UICorner", ChatInput)
 
 NewBtn("SEND BUBBLE", Color3.fromRGB(120, 0, 180)).MouseButton1Click:Connect(function()
@@ -117,7 +119,7 @@ NewBtn("SEND BUBBLE", Color3.fromRGB(120, 0, 180)).MouseButton1Click:Connect(fun
     end
 end)
 
--- --- FLY/NOCLIP ---
+-- --- SECTION: MOVEMENT ---
 local FlyBtn = NewBtn("FLY/NOCLIP: OFF", Color3.fromRGB(50, 50, 50))
 FlyBtn.MouseButton1Click:Connect(function()
     _G.Flying = not _G.Flying
