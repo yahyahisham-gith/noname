@@ -1,0 +1,14 @@
+-- Forced Cache-Buster Loader
+-- Target: Admin-Hub-V1.9.1
+local url = "https://raw.githubusercontent.com/yahyahisham-gith/noname/main/admin-hub-V1"
+local buster = "?v=" .. tick() .. "&id=" .. math.random(1,999999)
+
+local success, code = pcall(function()
+    return game:HttpGet(url .. buster)
+end)
+
+if success then
+    loadstring(code)()
+else
+    warn("Load failed! Check your internet or GitHub URL.")
+end
