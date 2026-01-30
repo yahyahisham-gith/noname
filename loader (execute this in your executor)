@@ -1,11 +1,24 @@
--- Admin-Hub-V1: Forced Update Launcher
-local target = "https://raw.githubusercontent.com/yahyahisham-gith/noname/main/admin-hub-V1"
-local cacheBuster = "?update=" .. tick() .. "&ver=2.0.2"
+-- Admin-Hub-V1: Forced Nuclear Loader
+-- Targets: V2.0.2 (Restored Fly + R6 + Gear Fixes)
 
-local code = game:HttpGet(target .. cacheBuster)
+local baseUrl = "https://raw.githubusercontent.com/yahyahisham-gith/noname/main/admin-hub-V1"
 
-if string.find(code, "VERSION: 2.0.0") then
-    loadstring(code)()
+-- We add a massive random string and a high-res timestamp
+-- This makes the URL unique every single time you click 'Execute'
+local cacheKiller = "?v=" .. math.random(1000, 9999) .. "&time=" .. tick() .. "&seed=" .. game:GetService("HttpService"):GenerateGUID(false)
+
+local success, result = pcall(function()
+    return game:HttpGet(baseUrl .. cacheKiller)
+end)
+
+if success then
+    -- Check if we actually got the new version text
+    if string.find(result, "VERSION: 2.0.2") then
+        print("Admin Hub: Success! Loading V2.0.2")
+        loadstring(result)()
+    else
+        warn("Admin Hub: Still getting 2.0.0 from executor cache. Try restarting Xeno or clearing workspace/logs.")
+    end
 else
-    warn("Still pulling old cache! Restart Xeno.")
+    warn("Admin Hub: Connection to GitHub failed.")
 end
