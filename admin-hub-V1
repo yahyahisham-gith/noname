@@ -1,8 +1,8 @@
 -- admin-hub-V1
--- VERSION: 1.9.7 (Cactus Asset Summoner + Master Fixes)
--- Compatibility: Universal + Specialized 'The Door' Events
+-- VERSION: 1.9.8 (DOOR FIX + CACTUS)
+-- Universal + "The Door" Specialized Logic
 
--- [1] CLEANUP & VARS
+-- [1] CLEANUP
 if _G.HubRunning then 
     _G.HubStop = true 
     local old = game.CoreGui:FindFirstChild("AdminHubV1") or game.Players.LocalPlayer.PlayerGui:FindFirstChild("AdminHubV1")
@@ -14,27 +14,26 @@ _G.HubRunning, _G.HubStop = true, false
 local Player = game.Players.LocalPlayer
 local UIS, RunService = game:GetService("UserInputService"), game:GetService("RunService")
 
--- [2] CACTUS SUMMONER LOGIC
-local function SummonDesertCactus()
-    -- Scans for the specific model seen in your images
-    local cactusAsset = nil
-    for _, v in pairs(game:GetDescendants()) do
-        if v:IsA("Model") and (v.Name:lower():find("cactus") or v.Name:lower():find("spike")) then
-            cactusAsset = v
-            break
+-- [2] ENHANCED DOOR LOGIC
+local function ForceCloseAllDoors()
+    for _, v in pairs(workspace:GetDescendants()) do
+        -- Searches for anything containing "Door" or "Gate"
+        if (v.Name:lower():find("door") or v.Name:lower():find("gate")) and v:IsA("BasePart") then
+            v.CanCollide = true
+            v.Transparency = 0
+            
+            -- Trigger any proximity prompts to 'Force' the game to think it's closed
+            local prompt = v:FindFirstChildWhichIsA("ProximityPrompt", true)
+            if prompt then
+                fireproximityprompt(prompt)
+            end
+            
+            -- Kill any 'Open' values if they exist
+            local openVal = v:FindFirstChild("Open") or v:FindFirstChild("Opened")
+            if openVal and openVal:IsA("BoolValue") then
+                openVal.Value = false
+            end
         end
-    end
-
-    if cactusAsset then
-        local clone = cactusAsset:Clone()
-        clone.Parent = workspace
-        clone:MoveTo(Player.Character.HumanoidRootPart.Position + (Player.Character.HumanoidRootPart.CFrame.LookVector * 5))
-    else
-        -- Manual builder if the asset hasn't loaded in the server yet
-        local p = Instance.new("Part", workspace)
-        p.Name = "SummonedCactus"; p.Size = Vector3.new(3, 7, 3); p.Color = Color3.fromRGB(40, 90, 40)
-        p.Position = Player.Character.HumanoidRootPart.Position + (Player.Character.HumanoidRootPart.CFrame.LookVector * 5)
-        Instance.new("SelectionOutline", p).Color3 = Color3.new(0,0,0)
     end
 end
 
@@ -50,7 +49,7 @@ DragFrame.BackgroundColor3 = Color3.fromRGB(35, 35, 35); DragFrame.Active = true
 Instance.new("UICorner", DragFrame)
 
 local Title = Instance.new("TextLabel", DragFrame)
-Title.Size = UDim2.new(1, 0, 1, 0); Title.Text = "MASTER HUB V1.9.7"; Title.TextColor3 = Color3.new(1,1,1)
+Title.Size = UDim2.new(1, 0, 1, 0); Title.Text = "MASTER HUB V1.9.8"; Title.TextColor3 = Color3.new(1,1,1)
 Title.BackgroundTransparency = 1; Title.Font = Enum.Font.GothamBold
 
 local Main = Instance.new("Frame", DragFrame)
@@ -59,7 +58,7 @@ Main.BackgroundColor3 = Color3.fromRGB(20, 20, 20); Instance.new("UICorner", Mai
 
 local Scroll = Instance.new("ScrollingFrame", Main)
 Scroll.Size = UDim2.new(1, -10, 1, -10); Scroll.Position = UDim2.new(0, 5, 0, 5)
-Scroll.BackgroundTransparency = 1; Scroll.CanvasSize = UDim2.new(0, 0, 7.5, 0); Scroll.ScrollBarThickness = 2
+Scroll.BackgroundTransparency = 1; Scroll.CanvasSize = UDim2.new(0, 0, 8, 0); Scroll.ScrollBarThickness = 2
 local UIList = Instance.new("UIListLayout", Scroll); UIList.Padding = UDim.new(0, 8); UIList.HorizontalAlignment = Enum.HorizontalAlignment.Center
 
 local function NewBtn(text, color)
@@ -68,37 +67,25 @@ local function NewBtn(text, color)
     Instance.new("UICorner", b); return b
 end
 
--- --- DESERT EVENT / THE DOOR ---
-NewBtn("SUMMON DESERT CACTUS", Color3.fromRGB(45, 120, 45)).MouseButton1Click:Connect(SummonDesertCactus)
+-- --- THE DOOR FIXES ---
+NewBtn("FORCE CLOSE DOORS (FIXED)", Color3.fromRGB(180, 0, 0)).MouseButton1Click:Connect(ForceCloseAllDoors)
 
-NewBtn("FORCE CLOSE DOORS", Color3.fromRGB(150, 0, 0)).MouseButton1Click:Connect(function()
-    for _, v in pairs(workspace:GetDescendants()) do
-        if v.Name:lower():find("door") and v:IsA("BasePart") then v.CanCollide, v.Transparency = true, 0 end
-    end
-end)
-
--- --- GEARS & TOOLS ---
-local CatIn = Instance.new("TextBox", Scroll)
-CatIn.Size = UDim2.new(0.9, 0, 0, 35); CatIn.PlaceholderText = "Catalog Gear ID..."; CatIn.BackgroundColor3 = Color3.fromRGB(45, 45, 45); CatIn.TextColor3 = Color3.new(1,1,1); Instance.new("UICorner", CatIn)
-NewBtn("GET CATALOG GEAR", Color3.fromRGB(0, 130, 0)).MouseButton1Click:Connect(function()
-    local success, objects = pcall(function() return game:GetObjects("rbxassetid://" .. CatIn.Text) end)
-    if success and objects[1] then 
-        objects[1].Parent = Player.Backpack
-        for _, v in pairs(objects[1]:GetDescendants()) do if v:IsA("LuaSourceContainer") then v.Disabled = false end end
-    end
-end)
-
-local GameIn = Instance.new("TextBox", Scroll)
-GameIn.Size = UDim2.new(0.9, 0, 0, 35); GameIn.PlaceholderText = "Game Tool Name..."; GameIn.BackgroundColor3 = Color3.fromRGB(45, 45, 45); GameIn.TextColor3 = Color3.new(1,1,1); Instance.new("UICorner", GameIn)
-NewBtn("GET GAME GEAR", Color3.fromRGB(0, 90, 180)).MouseButton1Click:Connect(function()
+NewBtn("SUMMON DESERT CACTUS", Color3.fromRGB(45, 120, 45)).MouseButton1Click:Connect(function()
+    local cactus = nil
     for _, v in pairs(game:GetDescendants()) do
-        if v:IsA("Tool") and v.Name:lower():find(GameIn.Text:lower()) then v:Clone().Parent = Player.Backpack; break end
+        if v:IsA("Model") and (v.Name:lower():find("cactus") or v.Name:lower():find("spike")) then
+            cactus = v; break
+        end
+    end
+    if cactus then
+        local c = cactus:Clone(); c.Parent = workspace
+        c:MoveTo(Player.Character.HumanoidRootPart.Position + (Player.Character.HumanoidRootPart.CFrame.LookVector * 5))
     end
 end)
 
--- --- BUBBLE CHAT (SUSPENSION BYPASS) ---
+-- --- BUBBLE CHAT (FOR MUTE) ---
 local BubbleIn = Instance.new("TextBox", Scroll)
-BubbleIn.Size = UDim2.new(0.9, 0, 0, 35); BubbleIn.PlaceholderText = "Mute Bypass Msg..."; BubbleIn.BackgroundColor3 = Color3.fromRGB(45, 45, 45); BubbleIn.TextColor3 = Color3.new(1,1,1); Instance.new("UICorner", BubbleIn)
+BubbleIn.Size = UDim2.new(0.9, 0, 0, 35); BubbleIn.PlaceholderText = "Bubble Msg..."; BubbleIn.BackgroundColor3 = Color3.fromRGB(45, 45, 45); BubbleIn.TextColor3 = Color3.new(1,1,1); Instance.new("UICorner", BubbleIn)
 NewBtn("SEND BUBBLE", Color3.fromRGB(120, 0, 180)).MouseButton1Click:Connect(function()
     if BubbleIn.Text ~= "" and Player.Character:FindFirstChild("Head") then
         local b = Instance.new("BillboardGui", Player.Character.Head); b.Size = UDim2.new(0, 250, 0, 50); b.ExtentsOffset = Vector3.new(0, 3, 0)
@@ -111,6 +98,5 @@ end)
 -- --- HUB CONTROLS ---
 NewBtn("CLOSE HUB (HIDE)", Color3.fromRGB(60, 60, 60)).MouseButton1Click:Connect(function() ScreenGui.Enabled = false end)
 NewBtn("FORCE CLOSE HUB (KILL)", Color3.fromRGB(170, 0, 0)).MouseButton1Click:Connect(function()
-    _G.HubStop, _G.HubRunning = true, false
-    ScreenGui:Destroy()
+    _G.HubStop, _G.HubRunning = true, false; ScreenGui:Destroy()
 end)
