@@ -1,14 +1,19 @@
--- Forced Cache-Buster Loader
--- Target: Admin-Hub-V1.9.1
-local url = "https://raw.githubusercontent.com/yahyahisham-gith/noname/main/admin-hub-V1"
-local buster = "?v=" .. tick() .. "&id=" .. math.random(1,999999)
+-- Admin-Hub-V1: Dynamic Version Loader
+-- Targets: Latest GitHub Commit (V1.9.2+)
 
-local success, code = pcall(function()
-    return game:HttpGet(url .. buster)
+local HttpService = game:GetService("HttpService")
+local GitHubRaw = "https://raw.githubusercontent.com/yahyahisham-gith/noname/main/admin-hub-V1"
+
+-- Generates a unique string to force GitHub to bypass cache
+local cacheBuster = "?v=" .. HttpService:GenerateGUID(false) .. "&t=" .. tick() .. "&r=" .. math.random(1, 100000)
+
+local success, result = pcall(function()
+    return game:HttpGet(GitHubRaw .. cacheBuster)
 end)
 
 if success then
-    loadstring(code)()
+    print("Admin Hub: Successfully fetched latest version.")
+    loadstring(result)()
 else
-    warn("Load failed! Check your internet or GitHub URL.")
+    warn("Admin Hub: Failed to fetch update. Check connection.")
 end
