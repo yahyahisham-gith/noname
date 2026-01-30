@@ -1,5 +1,6 @@
 -- admin-hub-V1
--- VERSION: 2.0.0 (R6 Mode + Gear Function Fix)
+-- VERSION: 2.0.2 (Movement + R6 + Gear Fix)
+-- Compatibility: All Games (FE)
 
 -- [1] CLEANUP
 if _G.HubRunning then 
@@ -14,37 +15,7 @@ local Player = game.Players.LocalPlayer
 local Character = Player.Character or Player.CharacterAdded:Wait()
 local UIS, RunService = game:GetService("UserInputService"), game:GetService("RunService")
 
--- [2] R6 CONVERSION
-local function ConvertToR6()
-    local Hum = Character:FindFirstChildOfClass("Humanoid")
-    if Hum then
-        -- This forces the character to behave with R6 logic in R15 games
-        Hum.RigType = Enum.HumanoidRigType.R6
-        print("Switched to R6 Rig Logic")
-    end
-end
-
--- [3] GEAR FIX (RETAIN FUNCTIONS)
-local function SecureGear(id)
-    local success, objects = pcall(function() return game:GetObjects("rbxassetid://" .. id) end)
-    if success and objects[1] then
-        local tool = objects[1]
-        -- Attempting to bypass script deletion
-        local scriptFolder = Instance.new("Folder", tool)
-        scriptFolder.Name = "FunctionStorage"
-        
-        for _, v in pairs(tool:GetDescendants()) do
-            if v:IsA("LuaSourceContainer") then
-                v.Disabled = false
-                v.Parent = scriptFolder -- Hide scripts from immediate deletion
-            end
-        end
-        tool.Parent = Player.Backpack
-        print("Gear Given. Check FunctionStorage if scripts fail.")
-    end
-end
-
--- [4] UI CONSTRUCTION
+-- [2] UI CONSTRUCTION
 local ScreenGui = Instance.new("ScreenGui")
 pcall(function() ScreenGui.Parent = game:GetService("CoreGui") end)
 if not ScreenGui.Parent then ScreenGui.Parent = Player.PlayerGui end
@@ -56,7 +27,7 @@ DragFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30); DragFrame.Active = true
 Instance.new("UICorner", DragFrame)
 
 local Title = Instance.new("TextLabel", DragFrame)
-Title.Size = UDim2.new(1, 0, 1, 0); Title.Text = "MASTER HUB V2.0.0"; Title.TextColor3 = Color3.new(1,1,1)
+Title.Size = UDim2.new(1, 0, 1, 0); Title.Text = "MASTER HUB V2.0.2"; Title.TextColor3 = Color3.new(1,1,1)
 Title.BackgroundTransparency = 1; Title.Font = Enum.Font.GothamBold
 
 local Main = Instance.new("Frame", DragFrame)
@@ -65,7 +36,7 @@ Main.BackgroundColor3 = Color3.fromRGB(20, 20, 20); Instance.new("UICorner", Mai
 
 local Scroll = Instance.new("ScrollingFrame", Main)
 Scroll.Size = UDim2.new(1, -10, 1, -10); Scroll.Position = UDim2.new(0, 5, 0, 5)
-Scroll.BackgroundTransparency = 1; Scroll.CanvasSize = UDim2.new(0, 0, 10, 0); Scroll.ScrollBarThickness = 2
+Scroll.BackgroundTransparency = 1; Scroll.CanvasSize = UDim2.new(0, 0, 11, 0); Scroll.ScrollBarThickness = 2
 local UIList = Instance.new("UIListLayout", Scroll); UIList.Padding = UDim.new(0, 8); UIList.HorizontalAlignment = Enum.HorizontalAlignment.Center
 
 local function NewBtn(text, color)
@@ -74,54 +45,62 @@ local function NewBtn(text, color)
     Instance.new("UICorner", b); return b
 end
 
--- --- CHARACTER OPTIONS ---
-NewBtn("FORCE R6 MODE", Color3.fromRGB(80, 80, 150)).MouseButton1Click:Connect(ConvertToR6)
+-- --- [SECTION] MOVEMENT (RESTORED) ---
+local FlyBtn = NewBtn("FLY/NOCLIP: OFF", Color3.fromRGB(50, 50, 50))
+FlyBtn.MouseButton1Click:Connect(function()
+    _G.Flying = not _G.Flying
+    FlyBtn.Text = _G.Flying and "FLY/NOCLIP: ON" or "FLY/NOCLIP: OFF"
+    FlyBtn.BackgroundColor3 = _G.Flying and Color3.fromRGB(0, 180, 80) or Color3.fromRGB(50, 50, 50)
+    if _G.Flying then
+        task.spawn(function()
+            local Root = Character:WaitForChild("HumanoidRootPart")
+            local BV = Instance.new("BodyVelocity", Root); BV.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
+            local BG = Instance.new("BodyGyro", Root); BG.MaxTorque = Vector3.new(math.huge, math.huge, math.huge)
+            while _G.Flying and not _G.HubStop do
+                BG.CFrame = workspace.CurrentCamera.CFrame
+                local moveDir = Vector3.new(0,0,0)
+                if UIS:IsKeyDown(Enum.KeyCode.W) then moveDir = moveDir + workspace.CurrentCamera.CFrame.LookVector end
+                if UIS:IsKeyDown(Enum.KeyCode.S) then moveDir = moveDir - workspace.CurrentCamera.CFrame.LookVector end
+                if UIS:IsKeyDown(Enum.KeyCode.A) then moveDir = moveDir - workspace.CurrentCamera.CFrame.RightVector end
+                if UIS:IsKeyDown(Enum.KeyCode.D) then moveDir = moveDir + workspace.CurrentCamera.CFrame.RightVector end
+                BV.Velocity = (moveDir.Magnitude > 0) and (moveDir.Unit * 80) or Vector3.new(0,0,0)
+                for _, v in pairs(Character:GetDescendants()) do if v:IsA("BasePart") then v.CanCollide = false end end
+                RunService.Stepped:Wait()
+            end
+            BV:Destroy(); BG:Destroy()
+            for _, v in pairs(Character:GetDescendants()) do if v:IsA("BasePart") then v.CanCollide = true end end
+        end)
+    end
+end)
 
--- --- THE DOOR / DESERT ---
+-- --- [SECTION] GEARS ---
+local CatIn = Instance.new("TextBox", Scroll)
+CatIn.Size = UDim2.new(0.9, 0, 0, 35); CatIn.PlaceholderText = "Catalog Gear ID..."; CatIn.BackgroundColor3 = Color3.fromRGB(45, 45, 45); CatIn.TextColor3 = Color3.new(1,1,1); Instance.new("UICorner", CatIn)
+NewBtn("GET CATALOG GEAR", Color3.fromRGB(0, 120, 0)).MouseButton1Click:Connect(function()
+    local success, objects = pcall(function() return game:GetObjects("rbxassetid://" .. CatIn.Text) end)
+    if success and objects[1] then 
+        objects[1].Parent = Player.Backpack
+        for _, v in pairs(objects[1]:GetDescendants()) do if v:IsA("LuaSourceContainer") then v.Disabled = false end end
+    end
+end)
+
+-- --- [SECTION] THE DOOR / CACTUS ---
+NewBtn("FORCE R6 MODE", Color3.fromRGB(80, 80, 150)).MouseButton1Click:Connect(function()
+    local Hum = Character:FindFirstChildOfClass("Humanoid")
+    if Hum then Hum.RigType = Enum.HumanoidRigType.R6 end
+end)
+
 NewBtn("SUMMON DESERT CACTUS", Color3.fromRGB(45, 120, 45)).MouseButton1Click:Connect(function()
     for _, v in pairs(game:GetDescendants()) do
         if v:IsA("Model") and v.Name:lower():find("cactus") then
             local c = v:Clone(); c.Parent = workspace
-            c:MoveTo(Player.Character.HumanoidRootPart.Position + (Player.Character.HumanoidRootPart.CFrame.LookVector * 5))
+            c:MoveTo(Character.HumanoidRootPart.Position + (Character.HumanoidRootPart.CFrame.LookVector * 5))
             break
         end
     end
 end)
 
-NewBtn("FORCE CLOSE DOORS", Color3.fromRGB(180, 0, 0)).MouseButton1Click:Connect(function()
-    for _, v in pairs(workspace:GetDescendants()) do
-        if v.Name:lower():find("door") or v.Name:lower():find("gate") then
-            v.CanCollide = true; v.Transparency = 0
-        end
-    end
-end)
-
--- --- GEARS ---
-local CatIn = Instance.new("TextBox", Scroll)
-CatIn.Size = UDim2.new(0.9, 0, 0, 35); CatIn.PlaceholderText = "Catalog Gear ID..."; CatIn.BackgroundColor3 = Color3.fromRGB(45, 45, 45); CatIn.TextColor3 = Color3.new(1,1,1); Instance.new("UICorner", CatIn)
-NewBtn("GET CATALOG GEAR (RETAIN FN)", Color3.fromRGB(0, 120, 0)).MouseButton1Click:Connect(function() SecureGear(CatIn.Text) end)
-
-local GameIn = Instance.new("TextBox", Scroll)
-GameIn.Size = UDim2.new(0.9, 0, 0, 35); GameIn.PlaceholderText = "Game Tool Name..."; GameIn.BackgroundColor3 = Color3.fromRGB(45, 45, 45); GameIn.TextColor3 = Color3.new(1,1,1); Instance.new("UICorner", GameIn)
-NewBtn("GET GAME GEAR", Color3.fromRGB(0, 80, 180)).MouseButton1Click:Connect(function()
-    for _, v in pairs(game:GetDescendants()) do
-        if v:IsA("Tool") and v.Name:lower():find(GameIn.Text:lower()) then v:Clone().Parent = Player.Backpack; break end
-    end
-end)
-
--- --- BUBBLE CHAT (MUTE BYPASS) ---
-local BubbleIn = Instance.new("TextBox", Scroll)
-BubbleIn.Size = UDim2.new(0.9, 0, 0, 35); BubbleIn.PlaceholderText = "Mute Bypass Msg..."; BubbleIn.BackgroundColor3 = Color3.fromRGB(45, 45, 45); BubbleIn.TextColor3 = Color3.new(1,1,1); Instance.new("UICorner", BubbleIn)
-NewBtn("SEND BUBBLE", Color3.fromRGB(120, 0, 180)).MouseButton1Click:Connect(function()
-    if BubbleIn.Text ~= "" and Character:FindFirstChild("Head") then
-        local b = Instance.new("BillboardGui", Character.Head); b.Size = UDim2.new(0, 250, 0, 50); b.ExtentsOffset = Vector3.new(0, 3, 0)
-        local f = Instance.new("Frame", b); f.Size = UDim2.new(1,0,1,0); f.BackgroundColor3 = Color3.new(1,1,1); Instance.new("UICorner", f)
-        local l = Instance.new("TextLabel", f); l.Size = UDim2.new(1,0,1,0); l.Text = BubbleIn.Text; l.TextScaled = true; l.BackgroundTransparency = 1
-        task.delay(5, function() b:Destroy() end); BubbleIn.Text = ""
-    end
-end)
-
--- --- HUB CONTROLS ---
+-- --- [SECTION] EXIT ---
 NewBtn("FORCE CLOSE HUB (KILL)", Color3.fromRGB(170, 0, 0)).MouseButton1Click:Connect(function()
-    _G.HubStop, _G.HubRunning = true, false; ScreenGui:Destroy()
+    _G.HubStop, _G.Flying, _G.HubRunning = true, false, false; ScreenGui:Destroy()
 end)
