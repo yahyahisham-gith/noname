@@ -1,43 +1,40 @@
 -- admin-hub-V1
--- VERSION: 1.9.3 (Catalog & Game Gear RESTORED)
--- Universal + "The Door" Master Build
+-- VERSION: 1.9.7 (Cactus Asset Summoner + Master Fixes)
+-- Compatibility: Universal + Specialized 'The Door' Events
 
--- [1] CLEANUP
+-- [1] CLEANUP & VARS
 if _G.HubRunning then 
     _G.HubStop = true 
     local old = game.CoreGui:FindFirstChild("AdminHubV1") or game.Players.LocalPlayer.PlayerGui:FindFirstChild("AdminHubV1")
     if old then old:Destroy() end
     task.wait(0.3) 
 end
-_G.HubRunning = true
-_G.HubStop = false
+_G.HubRunning, _G.HubStop = true, false
 
 local Player = game.Players.LocalPlayer
-local UIS = game:GetService("UserInputService")
-local RunService = game:GetService("RunService")
+local UIS, RunService = game:GetService("UserInputService"), game:GetService("RunService")
 
--- [2] GEAR & SCRIPT LOGIC
-local function SecureGive(id)
-    local success, objects = pcall(function() return game:GetObjects("rbxassetid://" .. id) end)
-    if success and objects[1] then
-        local tool = objects[1]
-        tool.Parent = Player.Backpack
-        for _, v in pairs(tool:GetDescendants()) do
-            if v:IsA("LocalScript") or v:IsA("Script") then
-                v.Disabled = false
-                local clone = v:Clone(); clone.Parent = v.Parent; v:Destroy()
-            end
-        end
-    end
-end
-
-local function GetGameGear(name)
+-- [2] CACTUS SUMMONER LOGIC
+local function SummonDesertCactus()
+    -- Scans for the specific model seen in your images
+    local cactusAsset = nil
     for _, v in pairs(game:GetDescendants()) do
-        if v:IsA("Tool") and v.Name:lower():find(name:lower()) then
-            local clone = v:Clone()
-            clone.Parent = Player.Backpack
+        if v:IsA("Model") and (v.Name:lower():find("cactus") or v.Name:lower():find("spike")) then
+            cactusAsset = v
             break
         end
+    end
+
+    if cactusAsset then
+        local clone = cactusAsset:Clone()
+        clone.Parent = workspace
+        clone:MoveTo(Player.Character.HumanoidRootPart.Position + (Player.Character.HumanoidRootPart.CFrame.LookVector * 5))
+    else
+        -- Manual builder if the asset hasn't loaded in the server yet
+        local p = Instance.new("Part", workspace)
+        p.Name = "SummonedCactus"; p.Size = Vector3.new(3, 7, 3); p.Color = Color3.fromRGB(40, 90, 40)
+        p.Position = Player.Character.HumanoidRootPart.Position + (Player.Character.HumanoidRootPart.CFrame.LookVector * 5)
+        Instance.new("SelectionOutline", p).Color3 = Color3.new(0,0,0)
     end
 end
 
@@ -48,27 +45,22 @@ if not ScreenGui.Parent then ScreenGui.Parent = Player.PlayerGui end
 ScreenGui.Name = "AdminHubV1"
 
 local DragFrame = Instance.new("Frame", ScreenGui)
-DragFrame.Size = UDim2.new(0, 250, 0, 40)
-DragFrame.Position = UDim2.new(0.5, -125, 0.2, 0)
-DragFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-DragFrame.Active = true; DragFrame.Draggable = true 
+DragFrame.Size = UDim2.new(0, 250, 0, 40); DragFrame.Position = UDim2.new(0.5, -125, 0.2, 0)
+DragFrame.BackgroundColor3 = Color3.fromRGB(35, 35, 35); DragFrame.Active = true; DragFrame.Draggable = true 
 Instance.new("UICorner", DragFrame)
 
 local Title = Instance.new("TextLabel", DragFrame)
-Title.Size = UDim2.new(1, 0, 1, 0); Title.Text = "MASTER HUB V1.9.3"; Title.TextColor3 = Color3.new(1,1,1)
+Title.Size = UDim2.new(1, 0, 1, 0); Title.Text = "MASTER HUB V1.9.7"; Title.TextColor3 = Color3.new(1,1,1)
 Title.BackgroundTransparency = 1; Title.Font = Enum.Font.GothamBold
 
 local Main = Instance.new("Frame", DragFrame)
-Main.Size = UDim2.new(1, 0, 0, 420); Main.Position = UDim2.new(0, 0, 1, 5)
-Main.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
-Instance.new("UICorner", Main)
+Main.Size = UDim2.new(1, 0, 0, 480); Main.Position = UDim2.new(0, 0, 1, 5)
+Main.BackgroundColor3 = Color3.fromRGB(20, 20, 20); Instance.new("UICorner", Main)
 
 local Scroll = Instance.new("ScrollingFrame", Main)
 Scroll.Size = UDim2.new(1, -10, 1, -10); Scroll.Position = UDim2.new(0, 5, 0, 5)
-Scroll.BackgroundTransparency = 1; Scroll.CanvasSize = UDim2.new(0, 0, 5.5, 0); Scroll.ScrollBarThickness = 2
-
-local UIList = Instance.new("UIListLayout", Scroll)
-UIList.Padding = UDim.new(0, 8); UIList.HorizontalAlignment = Enum.HorizontalAlignment.Center
+Scroll.BackgroundTransparency = 1; Scroll.CanvasSize = UDim2.new(0, 0, 7.5, 0); Scroll.ScrollBarThickness = 2
+local UIList = Instance.new("UIListLayout", Scroll); UIList.Padding = UDim.new(0, 8); UIList.HorizontalAlignment = Enum.HorizontalAlignment.Center
 
 local function NewBtn(text, color)
     local b = Instance.new("TextButton", Scroll)
@@ -76,69 +68,49 @@ local function NewBtn(text, color)
     Instance.new("UICorner", b); return b
 end
 
--- --- SECTION: UNIVERSAL GEAR (RESTORED) ---
-local CatalogInput = Instance.new("TextBox", Scroll)
-CatalogInput.Size = UDim2.new(0.9, 0, 0, 35); CatalogInput.PlaceholderText = "Catalog Gear ID..."; CatalogInput.BackgroundColor3 = Color3.fromRGB(45, 45, 45); CatalogInput.TextColor3 = Color3.new(1,1,1)
-Instance.new("UICorner", CatalogInput)
-NewBtn("GET CATALOG GEAR", Color3.fromRGB(0, 120, 0)).MouseButton1Click:Connect(function() SecureGive(CatalogInput.Text) end)
+-- --- DESERT EVENT / THE DOOR ---
+NewBtn("SUMMON DESERT CACTUS", Color3.fromRGB(45, 120, 45)).MouseButton1Click:Connect(SummonDesertCactus)
 
-local GameGearInput = Instance.new("TextBox", Scroll)
-GameGearInput.Size = UDim2.new(0.9, 0, 0, 35); GameGearInput.PlaceholderText = "Game Tool Name..."; GameGearInput.BackgroundColor3 = Color3.fromRGB(45, 45, 45); GameGearInput.TextColor3 = Color3.new(1,1,1)
-Instance.new("UICorner", GameGearInput)
-NewBtn("GET GAME GEAR", Color3.fromRGB(0, 100, 200)).MouseButton1Click:Connect(function() GetGameGear(GameGearInput.Text) end)
-
--- --- SECTION: THE DOOR TOOLS ---
 NewBtn("FORCE CLOSE DOORS", Color3.fromRGB(150, 0, 0)).MouseButton1Click:Connect(function()
     for _, v in pairs(workspace:GetDescendants()) do
-        if v.Name:lower():find("door") and v:IsA("BasePart") then v.CanCollide = true; v.Transparency = 0 end
+        if v.Name:lower():find("door") and v:IsA("BasePart") then v.CanCollide, v.Transparency = true, 0 end
     end
 end)
 
--- --- UTILS ---
-NewBtn("SUMMON DUMMY (MANUAL)", Color3.fromRGB(150, 150, 0)).MouseButton1Click:Connect(function()
-    local D = Instance.new("Model", workspace); D.Name = "HubDummy"
-    local H = Instance.new("Part", D); H.Name = "Head"; H.Size = Vector3.new(2,1,1); H.Position = Player.Character.HumanoidRootPart.Position + Vector3.new(0,5,5)
-    Instance.new("Humanoid", D)
+-- --- GEARS & TOOLS ---
+local CatIn = Instance.new("TextBox", Scroll)
+CatIn.Size = UDim2.new(0.9, 0, 0, 35); CatIn.PlaceholderText = "Catalog Gear ID..."; CatIn.BackgroundColor3 = Color3.fromRGB(45, 45, 45); CatIn.TextColor3 = Color3.new(1,1,1); Instance.new("UICorner", CatIn)
+NewBtn("GET CATALOG GEAR", Color3.fromRGB(0, 130, 0)).MouseButton1Click:Connect(function()
+    local success, objects = pcall(function() return game:GetObjects("rbxassetid://" .. CatIn.Text) end)
+    if success and objects[1] then 
+        objects[1].Parent = Player.Backpack
+        for _, v in pairs(objects[1]:GetDescendants()) do if v:IsA("LuaSourceContainer") then v.Disabled = false end end
+    end
 end)
 
-NewBtn("GET F3X BTOOLS", Color3.fromRGB(50, 50, 180)).MouseButton1Click:Connect(function() SecureGive("142785488") end)
+local GameIn = Instance.new("TextBox", Scroll)
+GameIn.Size = UDim2.new(0.9, 0, 0, 35); GameIn.PlaceholderText = "Game Tool Name..."; GameIn.BackgroundColor3 = Color3.fromRGB(45, 45, 45); GameIn.TextColor3 = Color3.new(1,1,1); Instance.new("UICorner", GameIn)
+NewBtn("GET GAME GEAR", Color3.fromRGB(0, 90, 180)).MouseButton1Click:Connect(function()
+    for _, v in pairs(game:GetDescendants()) do
+        if v:IsA("Tool") and v.Name:lower():find(GameIn.Text:lower()) then v:Clone().Parent = Player.Backpack; break end
+    end
+end)
 
 -- --- BUBBLE CHAT (SUSPENSION BYPASS) ---
-local ChatInput = Instance.new("TextBox", Scroll)
-ChatInput.Size = UDim2.new(0.9, 0, 0, 35); ChatInput.PlaceholderText = "Bubble Msg..."; ChatInput.BackgroundColor3 = Color3.fromRGB(45, 45, 45); ChatInput.TextColor3 = Color3.new(1,1,1)
-Instance.new("UICorner", ChatInput)
+local BubbleIn = Instance.new("TextBox", Scroll)
+BubbleIn.Size = UDim2.new(0.9, 0, 0, 35); BubbleIn.PlaceholderText = "Mute Bypass Msg..."; BubbleIn.BackgroundColor3 = Color3.fromRGB(45, 45, 45); BubbleIn.TextColor3 = Color3.new(1,1,1); Instance.new("UICorner", BubbleIn)
 NewBtn("SEND BUBBLE", Color3.fromRGB(120, 0, 180)).MouseButton1Click:Connect(function()
-    if ChatInput.Text ~= "" and Player.Character:FindFirstChild("Head") then
+    if BubbleIn.Text ~= "" and Player.Character:FindFirstChild("Head") then
         local b = Instance.new("BillboardGui", Player.Character.Head); b.Size = UDim2.new(0, 250, 0, 50); b.ExtentsOffset = Vector3.new(0, 3, 0)
         local f = Instance.new("Frame", b); f.Size = UDim2.new(1,0,1,0); f.BackgroundColor3 = Color3.new(1,1,1); Instance.new("UICorner", f)
-        local l = Instance.new("TextLabel", f); l.Size = UDim2.new(1,0,1,0); l.Text = ChatInput.Text; l.TextScaled = true; l.BackgroundTransparency = 1
-        task.delay(5, function() b:Destroy() end); ChatInput.Text = ""
+        local l = Instance.new("TextLabel", f); l.Size = UDim2.new(1,0,1,0); l.Text = BubbleIn.Text; l.TextScaled = true; l.BackgroundTransparency = 1
+        task.delay(5, function() b:Destroy() end); BubbleIn.Text = ""
     end
 end)
 
--- --- MOVEMENT ---
-local FlyBtn = NewBtn("FLY/NOCLIP: OFF", Color3.fromRGB(50, 50, 50))
-FlyBtn.MouseButton1Click:Connect(function()
-    _G.Flying = not _G.Flying
-    FlyBtn.Text = _G.Flying and "FLY/NOCLIP: ON" or "FLY/NOCLIP: OFF"
-    FlyBtn.BackgroundColor3 = _G.Flying and Color3.fromRGB(0, 180, 80) or Color3.fromRGB(50, 50, 50)
-    if _G.Flying then
-        task.spawn(function()
-            local Root = Player.Character:WaitForChild("HumanoidRootPart")
-            local BV = Instance.new("BodyVelocity", Root); BV.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
-            local BG = Instance.new("BodyGyro", Root); BG.MaxTorque = Vector3.new(math.huge, math.huge, math.huge)
-            while _G.Flying and not _G.HubStop do
-                BG.CFrame = workspace.CurrentCamera.CFrame
-                local moveDir = Vector3.new(0,0,0)
-                if UIS:IsKeyDown(Enum.KeyCode.W) then moveDir = moveDir + workspace.CurrentCamera.CFrame.LookVector end
-                if UIS:IsKeyDown(Enum.KeyCode.S) then moveDir = moveDir - workspace.CurrentCamera.CFrame.LookVector end
-                if UIS:IsKeyDown(Enum.KeyCode.A) then moveDir = moveDir - workspace.CurrentCamera.CFrame.RightVector end
-                if UIS:IsKeyDown(Enum.KeyCode.D) then moveDir = moveDir + workspace.CurrentCamera.CFrame.RightVector end
-                BV.Velocity = (moveDir.Magnitude > 0) and (moveDir.Unit * 75) or Vector3.new(0,0,0)
-                for _, v in pairs(Player.Character:GetDescendants()) do if v:IsA("BasePart") then v.CanCollide = false end end
-                RunService.Stepped:Wait()
-            end
-            BV:Destroy(); BG:Destroy()
-        end)
-    end
+-- --- HUB CONTROLS ---
+NewBtn("CLOSE HUB (HIDE)", Color3.fromRGB(60, 60, 60)).MouseButton1Click:Connect(function() ScreenGui.Enabled = false end)
+NewBtn("FORCE CLOSE HUB (KILL)", Color3.fromRGB(170, 0, 0)).MouseButton1Click:Connect(function()
+    _G.HubStop, _G.HubRunning = true, false
+    ScreenGui:Destroy()
 end)
